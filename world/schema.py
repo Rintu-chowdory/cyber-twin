@@ -41,6 +41,7 @@ class Asset:
     data: list[str] = field(default_factory=list)    # data labels
     owner: Optional[str] = None                      # employee id
     crown_jewel: bool = False
+    isolated: bool = False        # set by the defender via control API
 
 
 @dataclass
@@ -98,7 +99,7 @@ class World:
         return cls(
             org=d["org"],
             employees=[Employee(**e) for e in d["employees"]],
-            assets=[Asset(**a) for a in d["assets"]],
+            assets=[Asset(**{**{'isolated': False}, **a}) for a in d["assets"]],
             credentials=[Credential(**c) for c in d["credentials"]],
             secrets=[Secret(**s) for s in d["secrets"]],
             vulns=[Vuln(**v) for v in d["vulns"]],

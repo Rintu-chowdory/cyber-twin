@@ -7,3 +7,5 @@ world.json
 .env
 docker-compose.yml
 volumes/
+history/
+control/state.json

@@ -45,6 +45,19 @@ def main() -> None:
     world = World.load(args.world)
     card = yaml.safe_load(Path(args.scenario).read_text())
 
+    # snapshot the pre-tick state so the defender API can serve /diff
+    hist = Path("history")
+    hist.mkdir(exist_ok=True)
+    (hist / f"world-day-{world.day}.json").write_text(Path(args.world).read_text())
+
+    # a new day resets the defender's action budget
+    state_path = Path("control/state.json")
+    if state_path.exists():
+        state = json.loads(state_path.read_text())
+        state["day"] = world.day + 1
+        state["budget_used"] = 0
+        state_path.write_text(json.dumps(state, indent=2))
+
     changelog = apply_card(world, card)
     world.day += 1
     world.save(args.world)

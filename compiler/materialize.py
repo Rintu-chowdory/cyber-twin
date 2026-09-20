@@ -96,6 +96,20 @@ NETWORKS = {
     "mgmt": {"driver": "bridge", "ipam": {"config": [{"subnet": "10.30.0.0/24"}]}},
 }
 
+DEFENDER_API = {
+    "defender-api": {
+        "build": {"context": ".", "dockerfile": "control/Dockerfile"},
+        "networks": ["mgmt"],
+        "ports": ["8000:8000"],
+        "environment": ["LOG_ROOT=/mnt"],
+        "volumes": [
+            "./world.json:/app/world.json",
+            "./control:/app/control",
+            "./history:/app/history",
+        ] + [f"{v}:/mnt/{v}:ro" for v in LOG_VOLUMES],
+    }
+}
+
 ATTACKER = {
     "attacker": {
         "image": "kalilinux/kali-rolling:latest",
@@ -109,7 +123,7 @@ ATTACKER = {
 def compile_world(world_path: str, out_path: str, workstations: int = 0) -> None:
     world = json.loads(Path(world_path).read_text())
 
-    services = dict(ATTACKER)
+    services = {**DEFENDER_API, **ATTACKER}
     for asset in world["assets"]:
         spec = SERVICE_SPECS.get(asset["id"])
         if spec:

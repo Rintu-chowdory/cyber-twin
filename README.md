@@ -23,9 +23,9 @@ The AI defender reasons over state + real service logs, not fiction.
 ## Status
 
 - [x] Phase 1 — World model (schema + deterministic seeder)
-- [x] Phase 2 — Compiler: world -> docker-compose (3 networks, attacker box on dmz)
+- [x] Phase 2 — Compiler: world -> docker-compose (3 networks, attacker on dmz, defender-api on mgmt)
 - [x] Phase 3 — Scenario tick (1 card: leaked_api_key)
-- [ ] Phase 4 — Defender control API (block_ip, isolate, rotate, patch)
+- [x] Phase 4 — Defender control API (reads, actions, daily budget, collateral)
 - [ ] Phase 5 — Kubernetes port (RBAC / ServiceAccount attack paths)
 
 ## Quickstart
@@ -84,3 +84,40 @@ compiler/materialize.py  world.json -> docker-compose.yml
 scenarios/*.yaml          daily mutation cards
 tick.py                  apply a card, bump the day, save
 ```
+
+## Defender control API (phase 4)
+
+The defender's whole world goes through `http://localhost:8000`:
+
+```
+GET  /state      day, budget left, blocked IPs, collateral count
+GET  /assets     every asset: ip, net, services, vulns, isolation state
+GET  /secrets    secret locations + exposure (values are never returned)
+GET  /logs       real service logs, ?source=&q=&limit= (compose mounts them at /mnt)
+GET  /diff       what changed since yesterday's tick snapshot
+POST /act        {"action", "target", "param", "note"}
+```
+
+Actions and prices (100 pts per day, reset by the tick):
+
+| action            | pts | target        | note                                    |
+|-------------------|-----|---------------|-----------------------------------------|
+| block_ip          | 1   | IPv4          |                                        |
+| isolate_host      | 3   | asset id      | collateral recorded if it's a workstation |
+| rotate_credential | 2   | credential id | old password dead, strength 1.0          |
+| rotate_secret    | 2   | secret id     | exposure back to 0, leaked copies dead   |
+| patch_service     | 5   | asset id      | param = vuln id                          |
+| restore_backup    | 20  | asset id      | rebuild from backup, clears vulns        |
+
+Run it locally:
+
+```bash
+pip install -r requirements-control.txt
+uvicorn control.api:app --port 8000     # swagger docs at /docs
+```
+
+Or inside the lab (logs mounted read-only at /mnt): `docker compose up defender-api`.
+
+`defender/agent.py` is the skeleton loop: observe -> decide -> act. The
+`decide()` function is the marked LLM hook where the defender brain goes -
+it gets state, diff and recent log lines, and returns actions within budget.
