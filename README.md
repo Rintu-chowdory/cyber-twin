@@ -142,8 +142,7 @@ site/index.html` writes the publishable page. Play a scripted demo round:
 
 ## Scoreboard page
 
-`site/index.html` is deployed as a static site - commits to main
-auto-deploy it. Regenerate after a game with
+**Live: https://cyber-twin-scoreboard.onrender.com** (auto-deploys from main) Regenerate after a game with
 `python -m score --html site/index.html`, commit, push.
 
 ## Defender control API (phase 4)

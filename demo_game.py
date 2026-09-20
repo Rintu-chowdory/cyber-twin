@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API = "http://localhost:8001"
+API = "http://localhost:8000"
 
 
 def call(method: str, path: str, body: dict | None = None) -> dict:
