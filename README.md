@@ -87,6 +87,10 @@ world/seed.py            deterministic org generator (--seed)
 compiler/materialize.py  world.json -> docker-compose.yml
 scenarios/*.yaml          daily mutation cards (weight, predicates, expected response)
 tick.py                  apply a card (weighted --random or explicit), bump the day
+tools/recon.py           passive recon: public attack surface, leaks, weak-cred candidates
+tools/crack.py           wordlist attack on user accounts (--report scores the cracks)
+tools/attack_paths.py    BFS from the internet to every crown jewel, with the exact chain
+dashboard.py             generates the live hacking dashboard (site/index.html)
 defender/agent.py         observe -> decide -> act loop skeleton (LLM hook marked)
 control/api.py            defender control plane (reads, actions, budget)
 ```
@@ -140,9 +144,33 @@ site/index.html` writes the publishable page. Play a scripted demo round:
 
     python -m world.seed && uvicorn control.api:app & python demo_game.py
 
-## Scoreboard page
+## Hacking dashboard
 
-**Live: https://cyber-twin-scoreboard.onrender.com** (auto-deploys from main) Regenerate after a game with
+**Live: https://cyber-twin-scoreboard.onrender.com** (auto-deploys from main)
+
+Interactive network map of the whole org - DMZ/LAN/MGMT zones, every
+asset with live vuln/jewel/leak badges, incident feed with MTTR,
+attacker findings, and the public attack surface at a glance. Click
+any node for its detail (services, vulns, held secrets, data).
+
+    python -m dashboard --html site/index.html   # regenerate after a game
+
+## Attacker toolkit
+
+```bash
+python -m tools.recon            # what an outsider sees
+python -m tools.crack            # wordlist attack on user accounts
+python -m tools.crack --report   # ... and score the cracks via the API
+python -m tools.attack_paths     # internet -> crown jewel, exact chain
+```
+
+`attack_paths.py` is also the defender's triage tool: cut the cheapest
+link in each chain first (rotate the leaked key and the shortest path
+to `db-prod-01` dies).
+
+## Scoreboard page (legacy simple board)
+
+`python -m score --html` still writes the plain scoreboard. Regenerate after a game with
 `python -m score --html site/index.html`, commit, push.
 
 ## Defender control API (phase 4)

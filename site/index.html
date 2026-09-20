@@ -1,59 +1,184 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cyber Twin - scoreboard</title>
+<title>CYBER TWIN // live ops</title>
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
-          background: #0b0e14; color: #c9d1d9; padding: 2.5rem 1rem; }
-  .wrap { max-width: 900px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; letter-spacing: .2em; margin: 0 0 .2rem; }
-  .sub { color: #8b949e; margin: 0 0 2rem; }
-  .tiles { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
-  .tile { border: 1px solid #21262d; border-radius: 10px; padding: 1.2rem 1.4rem; }
-  .tile.att { border-color: #f8514966; }
-  .tile.def { border-color: #3fb95066; }
-  .tile h2 { margin: 0; font-size: .75rem; letter-spacing: .15em;
-              text-transform: uppercase; color: #8b949e; }
-  .tile .pts { font-size: 2.6rem; font-weight: 700; margin-top: .3rem; }
-  .att .pts { color: #f85149; } .def .pts { color: #3fb950; }
-  .tile .meta { color: #8b949e; font-size: .8rem; margin-top: .4rem; }
-  h3 { margin: 2.2rem 0 .6rem; font-size: .8rem; letter-spacing: .15em;
-        text-transform: uppercase; color: #8b949e; }
-  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-  th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid #21262d; }
-  th { color: #8b949e; font-weight: 400; font-size: .75rem;
-        text-transform: uppercase; letter-spacing: .1em; }
-  td.num { text-align: right; }
-  tr.open td { background: #f8514912; }
-  .none { color: #484f58; }
-  .sev { font-size: .7rem; padding: .1rem .45rem; border-radius: 99px;
-          border: 1px solid #30363d; text-transform: uppercase; }
-  .sev.critical { color: #f85149; border-color: #f8514966; }
-  .sev.high { color: #d29922; border-color: #d2992266; }
-  .sev.medium { color: #58a6ff; border-color: #58a6ff66; }
-  .sev.low { color: #8b949e; }
-  footer { margin-top: 3rem; color: #484f58; font-size: .75rem; }
-</style></head><body><div class="wrap">
-<h1>CYBER TWIN</h1>
-<p class="sub">Nimbus Dynamics &middot; day 5 &middot; attacker vs defender</p>
-<div class="tiles">
-  <div class="tile att"><h2>Attacker</h2>
-    <div class="pts">85 pts</div>
-    <div class="meta">3 findings submitted</div></div>
-  <div class="tile def"><h2>Defender</h2>
-    <div class="pts">20 pts</div>
-    <div class="meta">avg MTTR 2.7d &middot; 2 unresolved &middot;
-      0 collateral &middot; 3 actions</div></div>
+  :root { color-scheme: dark;
+    --bg:#050807; --panel:#0a100d; --line:#1d2b22; --txt:#c8e6cc;
+    --dim:#5d7a66; --hot:#00ff88; --red:#ff4d5e; --amber:#ffb454; --blue:#54c2ff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--txt);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13px;
+    padding:14px; overflow-x:hidden; }
+  body::before { content:""; position:fixed; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,255,136,.015) 2px 4px); }
+  .bar { display:flex; flex-wrap:wrap; gap:10px; align-items:stretch;
+    border:1px solid var(--line); background:var(--panel); padding:10px 14px; }
+  .bar h1 { font-size:15px; letter-spacing:.25em; color:var(--hot);
+    text-shadow:0 0 8px rgba(0,255,136,.4); padding-top:6px; }
+  .bar .sub { color:var(--dim); font-size:11px; letter-spacing:.1em; }
+  .scores { display:flex; gap:10px; margin-left:auto; }
+  .tile { border:1px solid var(--line); padding:6px 14px; text-align:right; min-width:120px; }
+  .tile .k { color:var(--dim); font-size:10px; letter-spacing:.2em; }
+  .tile .v { font-size:22px; font-weight:700; }
+  .tile.att .v { color:var(--red); } .tile.def .v { color:var(--hot); }
+  .grid { display:grid; grid-template-columns:1fr 340px; gap:10px; margin-top:10px; }
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+  .panel { border:1px solid var(--line); background:var(--panel); }
+  .panel h2 { font-size:10px; letter-spacing:.25em; color:var(--dim);
+    padding:8px 12px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; }
+  .panel h2 b { color:var(--txt); }
+  .zones { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:10px; }
+  @media (max-width:700px){ .zones{grid-template-columns:1fr} }
+  .zone { border:1px dashed var(--line); padding:8px; min-height:120px; }
+  .zone h3 { font-size:10px; letter-spacing:.2em; color:var(--dim); margin-bottom:8px;
+    display:flex; justify-content:space-between; }
+  .zone h3 span { color:var(--hot); }
+  .node { border:1px solid var(--line); background:#0c1410; padding:6px 8px;
+    margin-bottom:6px; cursor:pointer; transition:all .12s; position:relative; }
+  .node:hover { border-color:var(--hot); box-shadow:0 0 10px rgba(0,255,136,.15); }
+  .node.sel { border-color:var(--hot); }
+  .node .id { font-weight:700; } .node .ip { color:var(--dim); font-size:11px; }
+  .node .svcs { color:var(--blue); font-size:10px; margin-top:2px; }
+  .node .badges { position:absolute; top:6px; right:6px; display:flex; gap:3px; }
+  .b { font-size:9px; padding:0 4px; border:1px solid var(--line); color:var(--dim); }
+  .b.crit { color:var(--red); border-color:var(--red); }
+  .b.high { color:var(--amber); border-color:var(--amber); }
+  .b.jewel { color:#000; background:var(--hot); border-color:var(--hot); }
+  .b.leak { color:#000; background:var(--red); border-color:var(--red); }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+  .chip { font-size:10px; border:1px solid var(--line); color:var(--dim);
+    padding:1px 5px; cursor:pointer; }
+  .chip:hover { color:var(--hot); border-color:var(--hot); }
+  .chip.sel { color:var(--hot); border-color:var(--hot); }
+  .feed { max-height:420px; overflow-y:auto; }
+  .inc { padding:8px 12px; border-bottom:1px solid var(--line); }
+  .inc .card { font-weight:700; }
+  .inc .meta { color:var(--dim); font-size:11px; margin-top:2px; }
+  .st { font-size:10px; padding:0 5px; border:1px solid var(--line); }
+  .st.open { color:var(--red); border-color:var(--red); animation:blink 1.4s infinite; }
+  .st.res { color:var(--hot); border-color:var(--hot); }
+  .sev { font-size:10px; padding:0 5px; border:1px solid var(--line); color:var(--dim); }
+  .sev.critical { color:var(--red); border-color:var(--red); }
+  .sev.high { color:var(--amber); border-color:var(--amber); }
+  .sev.medium { color:var(--blue); border-color:var(--blue); }
+  .fnd { padding:8px 12px; border-bottom:1px solid var(--line); color:var(--red); }
+  .fnd .meta { color:var(--dim); font-size:11px; }
+  .stat { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
+  .stat .panel { padding:10px 12px; }
+  .stat .v { font-size:20px; font-weight:700; color:var(--hot); }
+  .stat .v.bad { color:var(--red); }
+  .stat .k { color:var(--dim); font-size:10px; letter-spacing:.15em; }
+  #detail { position:fixed; right:14px; bottom:14px; width:340px;
+    border:1px solid var(--hot); background:#07120c; padding:12px;
+    box-shadow:0 0 24px rgba(0,255,136,.25); display:none; z-index:9; }
+  #detail h4 { color:var(--hot); letter-spacing:.1em; }
+  #detail .x { float:right; cursor:pointer; color:var(--dim); }
+  #detail .row { margin-top:6px; font-size:11px; }
+  #detail .row b { color:var(--dim); font-weight:400; }
+  footer { margin-top:10px; color:#2e3b32; font-size:10px; letter-spacing:.1em; }
+  @keyframes blink { 50% { opacity:.35; } }
+</style></head><body>
+<div class="bar">
+  <div><h1>&gt;_ CYBER TWIN</h1>
+    <div class="sub" id="sub"></div></div>
+  <div class="scores">
+    <div class="tile att"><div class="k">ATTACKER</div><div class="v" id="att">0</div></div>
+    <div class="tile def"><div class="k">DEFENDER</div><div class="v" id="def">0</div></div>
+  </div>
 </div>
-<h3>Incidents (daily drift)</h3>
-<table><tr><th>Day</th><th>Card</th><th>Severity</th><th>Targets</th>
-<th>Status</th><th style="text-align:right">Pts</th></tr>
-<tr class="ok"><td>1</td><td>vulnerable_deploy</td><td><span class="sev critical">critical</span></td><td>v0007, web-dmz-01</td><td>resolved day 5 (MTTR 4d)</td><td class="num">0</td></tr><tr class="ok"><td>2</td><td>firewall_misconfig</td><td><span class="sev high">high</span></td><td>v0008, web-dmz-01</td><td>resolved day 5 (MTTR 3d)</td><td class="num">0</td></tr><tr class="open"><td>3</td><td>db_backup_exposed</td><td><span class="sev high">high</span></td><td>files-01, v0009</td><td>OPEN</td><td class="num">0</td></tr><tr class="ok"><td>4</td><td>leaked_ssh_key</td><td><span class="sev high">high</span></td><td>s0005</td><td>resolved day 5 (MTTR 1d)</td><td class="num">20</td></tr><tr class="open"><td>5</td><td>malicious_dependency</td><td><span class="sev critical">critical</span></td><td>ci-runner-01, v0010</td><td>OPEN</td><td class="num">0</td></tr></table>
-<h3>Attacker findings</h3>
-<table><tr><th>Day</th><th>Kind</th><th>Claim</th>
-<th style="text-align:right">Pts</th></tr><tr><td>5</td><td>credential</td><td>compromised credential c00006 (anya.costa)</td><td class="num">10</td></tr><tr><td>5</td><td>credential</td><td>compromised credential c00001 (soren.kim)</td><td class="num">25</td></tr><tr><td>5</td><td>asset_access</td><td>reached crown jewel db-prod-01</td><td class="num">50</td></tr></table>
-<footer>Regenerate with <code>python -m score --html site/index.html</code>,
-then commit and push - the page auto-deploys.</footer>
-</div></body></html>
+<div class="stat" id="stat"></div>
+<div class="grid">
+  <div class="panel"><h2>NETWORK MAP <b>click any node</b></h2><div class="zones" id="zones"></div></div>
+  <div>
+    <div class="panel"><h2>INCIDENT FEED <b id="incn"></b></h2><div class="feed" id="inc"></div></div>
+    <div class="panel" style="margin-top:10px"><h2>ATTACKER FINDINGS <b id="fndn"></b></h2><div class="feed" id="fnd"></div></div>
+  </div>
+</div>
+<div id="detail"></div>
+<footer>CYBER TWIN // world.json embedded, regenerate with <span>python -m dashboard</span> // auto-deploys on push</footer>
+<script>
+const D = {"org": {"name": "Nimbus Dynamics", "domain": "nimbus.local"}, "day": 5, "scores": {"attacker": 85, "defender": 20, "jewels": 2, "incident_count": 5}, "surface": {"exposed_secrets": 1, "weak_creds": 64, "total_vulns": 10}, "assets": [{"id": "ws-eng-00", "kind": "workstation", "hostname": "ws-eng-00.nimbus.local", "ip": "10.20.10.10", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-01", "kind": "workstation", "hostname": "ws-eng-01.nimbus.local", "ip": "10.20.10.11", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-02", "kind": "workstation", "hostname": "ws-eng-02.nimbus.local", "ip": "10.20.10.12", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-03", "kind": "workstation", "hostname": "ws-eng-03.nimbus.local", "ip": "10.20.10.13", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-04", "kind": "workstation", "hostname": "ws-eng-04.nimbus.local", "ip": "10.20.10.14", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-05", "kind": "workstation", "hostname": "ws-eng-05.nimbus.local", "ip": "10.20.10.15", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-06", "kind": "workstation", "hostname": "ws-eng-06.nimbus.local", "ip": "10.20.10.16", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-07", "kind": "workstation", "hostname": "ws-eng-07.nimbus.local", "ip": "10.20.10.17", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-08", "kind": "workstation", "hostname": "ws-eng-08.nimbus.local", "ip": "10.20.10.18", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-09", "kind": "workstation", "hostname": "ws-eng-09.nimbus.local", "ip": "10.20.10.19", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-10", "kind": "workstation", "hostname": "ws-eng-10.nimbus.local", "ip": "10.20.10.20", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-11", "kind": "workstation", "hostname": "ws-eng-11.nimbus.local", "ip": "10.20.10.21", "net": "lan", "os": "ubuntu-24.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-12", "kind": "workstation", "hostname": "ws-eng-12.nimbus.local", "ip": "10.20.10.22", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-13", "kind": "workstation", "hostname": "ws-eng-13.nimbus.local", "ip": "10.20.10.23", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-14", "kind": "workstation", "hostname": "ws-eng-14.nimbus.local", "ip": "10.20.10.24", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-15", "kind": "workstation", "hostname": "ws-eng-15.nimbus.local", "ip": "10.20.10.25", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-16", "kind": "workstation", "hostname": "ws-eng-16.nimbus.local", "ip": "10.20.10.26", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-17", "kind": "workstation", "hostname": "ws-eng-17.nimbus.local", "ip": "10.20.10.27", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-18", "kind": "workstation", "hostname": "ws-eng-18.nimbus.local", "ip": "10.20.10.28", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-19", "kind": "workstation", "hostname": "ws-eng-19.nimbus.local", "ip": "10.20.10.29", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-20", "kind": "workstation", "hostname": "ws-eng-20.nimbus.local", "ip": "10.20.10.30", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-21", "kind": "workstation", "hostname": "ws-eng-21.nimbus.local", "ip": "10.20.10.31", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-22", "kind": "workstation", "hostname": "ws-eng-22.nimbus.local", "ip": "10.20.10.32", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-23", "kind": "workstation", "hostname": "ws-eng-23.nimbus.local", "ip": "10.20.10.33", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-24", "kind": "workstation", "hostname": "ws-eng-24.nimbus.local", "ip": "10.20.10.34", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-25", "kind": "workstation", "hostname": "ws-eng-25.nimbus.local", "ip": "10.20.10.35", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-26", "kind": "workstation", "hostname": "ws-eng-26.nimbus.local", "ip": "10.20.10.36", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-27", "kind": "workstation", "hostname": "ws-eng-27.nimbus.local", "ip": "10.20.10.37", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-28", "kind": "workstation", "hostname": "ws-eng-28.nimbus.local", "ip": "10.20.10.38", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-29", "kind": "workstation", "hostname": "ws-eng-29.nimbus.local", "ip": "10.20.10.39", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-30", "kind": "workstation", "hostname": "ws-eng-30.nimbus.local", "ip": "10.20.10.40", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-31", "kind": "workstation", "hostname": "ws-eng-31.nimbus.local", "ip": "10.20.10.41", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-32", "kind": "workstation", "hostname": "ws-eng-32.nimbus.local", "ip": "10.20.10.42", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-33", "kind": "workstation", "hostname": "ws-eng-33.nimbus.local", "ip": "10.20.10.43", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-34", "kind": "workstation", "hostname": "ws-eng-34.nimbus.local", "ip": "10.20.10.44", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-35", "kind": "workstation", "hostname": "ws-eng-35.nimbus.local", "ip": "10.20.10.45", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-36", "kind": "workstation", "hostname": "ws-eng-36.nimbus.local", "ip": "10.20.10.46", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-eng-37", "kind": "workstation", "hostname": "ws-eng-37.nimbus.local", "ip": "10.20.10.47", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-00", "kind": "workstation", "hostname": "ws-fin-00.nimbus.local", "ip": "10.20.20.10", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-01", "kind": "workstation", "hostname": "ws-fin-01.nimbus.local", "ip": "10.20.20.11", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-02", "kind": "workstation", "hostname": "ws-fin-02.nimbus.local", "ip": "10.20.20.12", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-03", "kind": "workstation", "hostname": "ws-fin-03.nimbus.local", "ip": "10.20.20.13", "net": "lan", "os": "ubuntu-24.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-04", "kind": "workstation", "hostname": "ws-fin-04.nimbus.local", "ip": "10.20.20.14", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-05", "kind": "workstation", "hostname": "ws-fin-05.nimbus.local", "ip": "10.20.20.15", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-06", "kind": "workstation", "hostname": "ws-fin-06.nimbus.local", "ip": "10.20.20.16", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-07", "kind": "workstation", "hostname": "ws-fin-07.nimbus.local", "ip": "10.20.20.17", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-08", "kind": "workstation", "hostname": "ws-fin-08.nimbus.local", "ip": "10.20.20.18", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-09", "kind": "workstation", "hostname": "ws-fin-09.nimbus.local", "ip": "10.20.20.19", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-10", "kind": "workstation", "hostname": "ws-fin-10.nimbus.local", "ip": "10.20.20.20", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-11", "kind": "workstation", "hostname": "ws-fin-11.nimbus.local", "ip": "10.20.20.21", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-12", "kind": "workstation", "hostname": "ws-fin-12.nimbus.local", "ip": "10.20.20.22", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-fin-13", "kind": "workstation", "hostname": "ws-fin-13.nimbus.local", "ip": "10.20.20.23", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-00", "kind": "workstation", "hostname": "ws-hr-00.nimbus.local", "ip": "10.20.30.10", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-01", "kind": "workstation", "hostname": "ws-hr-01.nimbus.local", "ip": "10.20.30.11", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-02", "kind": "workstation", "hostname": "ws-hr-02.nimbus.local", "ip": "10.20.30.12", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-03", "kind": "workstation", "hostname": "ws-hr-03.nimbus.local", "ip": "10.20.30.13", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-04", "kind": "workstation", "hostname": "ws-hr-04.nimbus.local", "ip": "10.20.30.14", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-05", "kind": "workstation", "hostname": "ws-hr-05.nimbus.local", "ip": "10.20.30.15", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-06", "kind": "workstation", "hostname": "ws-hr-06.nimbus.local", "ip": "10.20.30.16", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-07", "kind": "workstation", "hostname": "ws-hr-07.nimbus.local", "ip": "10.20.30.17", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-hr-08", "kind": "workstation", "hostname": "ws-hr-08.nimbus.local", "ip": "10.20.30.18", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-00", "kind": "workstation", "hostname": "ws-sal-00.nimbus.local", "ip": "10.20.40.10", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-01", "kind": "workstation", "hostname": "ws-sal-01.nimbus.local", "ip": "10.20.40.11", "net": "lan", "os": "ubuntu-24.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-02", "kind": "workstation", "hostname": "ws-sal-02.nimbus.local", "ip": "10.20.40.12", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-03", "kind": "workstation", "hostname": "ws-sal-03.nimbus.local", "ip": "10.20.40.13", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-04", "kind": "workstation", "hostname": "ws-sal-04.nimbus.local", "ip": "10.20.40.14", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-05", "kind": "workstation", "hostname": "ws-sal-05.nimbus.local", "ip": "10.20.40.15", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-06", "kind": "workstation", "hostname": "ws-sal-06.nimbus.local", "ip": "10.20.40.16", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-07", "kind": "workstation", "hostname": "ws-sal-07.nimbus.local", "ip": "10.20.40.17", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-08", "kind": "workstation", "hostname": "ws-sal-08.nimbus.local", "ip": "10.20.40.18", "net": "lan", "os": "ubuntu-24.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-09", "kind": "workstation", "hostname": "ws-sal-09.nimbus.local", "ip": "10.20.40.19", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-10", "kind": "workstation", "hostname": "ws-sal-10.nimbus.local", "ip": "10.20.40.20", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-11", "kind": "workstation", "hostname": "ws-sal-11.nimbus.local", "ip": "10.20.40.21", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-12", "kind": "workstation", "hostname": "ws-sal-12.nimbus.local", "ip": "10.20.40.22", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-13", "kind": "workstation", "hostname": "ws-sal-13.nimbus.local", "ip": "10.20.40.23", "net": "lan", "os": "ubuntu-24.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-14", "kind": "workstation", "hostname": "ws-sal-14.nimbus.local", "ip": "10.20.40.24", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-15", "kind": "workstation", "hostname": "ws-sal-15.nimbus.local", "ip": "10.20.40.25", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-16", "kind": "workstation", "hostname": "ws-sal-16.nimbus.local", "ip": "10.20.40.26", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-17", "kind": "workstation", "hostname": "ws-sal-17.nimbus.local", "ip": "10.20.40.27", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-18", "kind": "workstation", "hostname": "ws-sal-18.nimbus.local", "ip": "10.20.40.28", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-19", "kind": "workstation", "hostname": "ws-sal-19.nimbus.local", "ip": "10.20.40.29", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-20", "kind": "workstation", "hostname": "ws-sal-20.nimbus.local", "ip": "10.20.40.30", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-21", "kind": "workstation", "hostname": "ws-sal-21.nimbus.local", "ip": "10.20.40.31", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-22", "kind": "workstation", "hostname": "ws-sal-22.nimbus.local", "ip": "10.20.40.32", "net": "lan", "os": "ubuntu-24.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-sal-23", "kind": "workstation", "hostname": "ws-sal-23.nimbus.local", "ip": "10.20.40.33", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-00", "kind": "workstation", "hostname": "ws-mar-00.nimbus.local", "ip": "10.20.50.10", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-01", "kind": "workstation", "hostname": "ws-mar-01.nimbus.local", "ip": "10.20.50.11", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-02", "kind": "workstation", "hostname": "ws-mar-02.nimbus.local", "ip": "10.20.50.12", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-03", "kind": "workstation", "hostname": "ws-mar-03.nimbus.local", "ip": "10.20.50.13", "net": "lan", "os": "ubuntu-22.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-04", "kind": "workstation", "hostname": "ws-mar-04.nimbus.local", "ip": "10.20.50.14", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-05", "kind": "workstation", "hostname": "ws-mar-05.nimbus.local", "ip": "10.20.50.15", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-06", "kind": "workstation", "hostname": "ws-mar-06.nimbus.local", "ip": "10.20.50.16", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-07", "kind": "workstation", "hostname": "ws-mar-07.nimbus.local", "ip": "10.20.50.17", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-08", "kind": "workstation", "hostname": "ws-mar-08.nimbus.local", "ip": "10.20.50.18", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-09", "kind": "workstation", "hostname": "ws-mar-09.nimbus.local", "ip": "10.20.50.19", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-10", "kind": "workstation", "hostname": "ws-mar-10.nimbus.local", "ip": "10.20.50.20", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-11", "kind": "workstation", "hostname": "ws-mar-11.nimbus.local", "ip": "10.20.50.21", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-12", "kind": "workstation", "hostname": "ws-mar-12.nimbus.local", "ip": "10.20.50.22", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-13", "kind": "workstation", "hostname": "ws-mar-13.nimbus.local", "ip": "10.20.50.23", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-14", "kind": "workstation", "hostname": "ws-mar-14.nimbus.local", "ip": "10.20.50.24", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-mar-15", "kind": "workstation", "hostname": "ws-mar-15.nimbus.local", "ip": "10.20.50.25", "net": "lan", "os": "ubuntu-24.04", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-00", "kind": "workstation", "hostname": "ws-ops-00.nimbus.local", "ip": "10.20.60.10", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-01", "kind": "workstation", "hostname": "ws-ops-01.nimbus.local", "ip": "10.20.60.11", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-02", "kind": "workstation", "hostname": "ws-ops-02.nimbus.local", "ip": "10.20.60.12", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-03", "kind": "workstation", "hostname": "ws-ops-03.nimbus.local", "ip": "10.20.60.13", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-04", "kind": "workstation", "hostname": "ws-ops-04.nimbus.local", "ip": "10.20.60.14", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-05", "kind": "workstation", "hostname": "ws-ops-05.nimbus.local", "ip": "10.20.60.15", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-06", "kind": "workstation", "hostname": "ws-ops-06.nimbus.local", "ip": "10.20.60.16", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-07", "kind": "workstation", "hostname": "ws-ops-07.nimbus.local", "ip": "10.20.60.17", "net": "lan", "os": "ubuntu-22.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-08", "kind": "workstation", "hostname": "ws-ops-08.nimbus.local", "ip": "10.20.60.18", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-09", "kind": "workstation", "hostname": "ws-ops-09.nimbus.local", "ip": "10.20.60.19", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-10", "kind": "workstation", "hostname": "ws-ops-10.nimbus.local", "ip": "10.20.60.20", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-ops-11", "kind": "workstation", "hostname": "ws-ops-11.nimbus.local", "ip": "10.20.60.21", "net": "lan", "os": "windows-11", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-exe-00", "kind": "workstation", "hostname": "ws-exe-00.nimbus.local", "ip": "10.20.70.10", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-exe-01", "kind": "workstation", "hostname": "ws-exe-01.nimbus.local", "ip": "10.20.70.11", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-exe-02", "kind": "workstation", "hostname": "ws-exe-02.nimbus.local", "ip": "10.20.70.12", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-exe-03", "kind": "workstation", "hostname": "ws-exe-03.nimbus.local", "ip": "10.20.70.13", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-exe-04", "kind": "workstation", "hostname": "ws-exe-04.nimbus.local", "ip": "10.20.70.14", "net": "lan", "os": "windows-11", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-exe-05", "kind": "workstation", "hostname": "ws-exe-05.nimbus.local", "ip": "10.20.70.15", "net": "lan", "os": "macos-14", "services": [], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "ws-exe-06", "kind": "workstation", "hostname": "ws-exe-06.nimbus.local", "ip": "10.20.70.16", "net": "lan", "os": "macos-14", "services": ["ssh"], "vulns": [], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "web-dmz-01", "kind": "server", "hostname": "web-dmz-01.nimbus.local", "ip": "10.10.0.10", "net": "dmz", "os": "ubuntu-24.04", "services": ["http", "https", "http-alt (8080)", "admin-console (8080)"], "vulns": [{"id": "v0001", "kind": "ssrf", "severity": "high"}, {"id": "v0007", "kind": "sql_injection", "severity": "critical"}, {"id": "v0008", "kind": "exposed_admin_console", "severity": "high"}], "holds": [], "data": ["public_site"], "crown_jewel": false, "leaked": false}, {"id": "vpn-01", "kind": "server", "hostname": "vpn-01.nimbus.local", "ip": "10.10.0.20", "net": "dmz", "os": "ubuntu-24.04", "services": ["wireguard"], "vulns": [{"id": "v0006", "kind": "vpn_no_mfa", "severity": "high"}], "holds": [], "data": [], "crown_jewel": false, "leaked": false}, {"id": "mail-01", "kind": "server", "hostname": "mail-01.nimbus.local", "ip": "10.10.0.30", "net": "dmz", "os": "ubuntu-24.04", "services": ["smtp", "imap"], "vulns": [], "holds": [], "data": ["mail_spool"], "crown_jewel": false, "leaked": false}, {"id": "gitea-01", "kind": "server", "hostname": "gitea-01.nimbus.local", "ip": "10.20.1.10", "net": "lan", "os": "ubuntu-24.04", "services": ["http", "ssh"], "vulns": [{"id": "v0003", "kind": "exposed_git_config", "severity": "medium"}], "holds": ["c00168", "s0001", "s0002", "s0003"], "data": ["source_code"], "crown_jewel": false, "leaked": true}, {"id": "ci-runner-01", "kind": "server", "hostname": "ci-runner-01.nimbus.local", "ip": "10.20.1.11", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh", "docker"], "vulns": [{"id": "v0004", "kind": "docker_socket_mount", "severity": "critical"}, {"id": "v0010", "kind": "malicious_build_dependency", "severity": "critical"}], "holds": ["c00171", "s0004"], "data": ["build_artifacts", "build_artifacts (possibly tainted)"], "crown_jewel": false, "leaked": false}, {"id": "db-prod-01", "kind": "server", "hostname": "db-prod-01.nimbus.local", "ip": "10.20.1.20", "net": "lan", "os": "ubuntu-24.04", "services": ["postgres"], "vulns": [{"id": "v0005", "kind": "unpatched_postgres", "severity": "critical"}], "holds": ["c00169"], "data": ["customer_pii", "billing"], "crown_jewel": true, "leaked": false}, {"id": "db-hr-01", "kind": "server", "hostname": "db-hr-01.nimbus.local", "ip": "10.20.1.21", "net": "lan", "os": "ubuntu-24.04", "services": ["postgres"], "vulns": [], "holds": ["c00170"], "data": ["employee_records"], "crown_jewel": true, "leaked": false}, {"id": "files-01", "kind": "server", "hostname": "files-01.nimbus.local", "ip": "10.20.1.30", "net": "lan", "os": "ubuntu-24.04", "services": ["smb", "http"], "vulns": [{"id": "v0009", "kind": "world_readable_backup", "severity": "high"}], "holds": ["s0005"], "data": ["shared_drive", "backup_prod_2026-09-20.sql (unencrypted, world-readable)"], "crown_jewel": false, "leaked": false}, {"id": "jump-01", "kind": "server", "hostname": "jump-01.nimbus.local", "ip": "10.20.1.40", "net": "lan", "os": "ubuntu-24.04", "services": ["ssh"], "vulns": [{"id": "v0002", "kind": "weak_ssh_password", "severity": "medium"}], "holds": ["c00172"], "data": [], "crown_jewel": false, "leaked": false}, {"id": "log-01", "kind": "server", "hostname": "log-01.nimbus.local", "ip": "10.30.0.10", "net": "mgmt", "os": "ubuntu-24.04", "services": ["http", "syslog"], "vulns": [], "holds": [], "data": ["audit_logs"], "crown_jewel": false, "leaked": false}], "incidents": [{"card": "vulnerable_deploy", "day": 1, "severity": "critical", "targets": ["v0007", "web-dmz-01"], "resolved_day": 5, "mtr_days": 4, "points": 0}, {"card": "firewall_misconfig", "day": 2, "severity": "high", "targets": ["v0008", "web-dmz-01"], "resolved_day": 5, "mtr_days": 3, "points": 0}, {"card": "db_backup_exposed", "day": 3, "severity": "high", "targets": ["files-01", "v0009"], "resolved_day": null, "mtr_days": null, "points": 0}, {"card": "leaked_ssh_key", "day": 4, "severity": "high", "targets": ["s0005"], "resolved_day": 5, "mtr_days": 1, "points": 20}, {"card": "malicious_dependency", "day": 5, "severity": "critical", "targets": ["ci-runner-01", "v0010"], "resolved_day": null, "mtr_days": null, "points": 0}], "findings": [{"day": 5, "kind": "credential", "id": "c00006", "label": "compromised credential c00006 (anya.costa)", "points": 10}, {"day": 5, "kind": "credential", "id": "c00001", "label": "compromised credential c00001 (soren.kim)", "points": 25}, {"day": 5, "kind": "asset_access", "id": "db-prod-01", "label": "reached crown jewel db-prod-01", "points": 50}]};
+const $ = id => document.getElementById(id);
+
+$('sub').textContent = D.org.name + ' · day ' + D.day + ' · ' + D.org.domain;
+$('att').textContent = D.scores.attacker + ' pts';
+$('def').textContent = D.scores.defender + ' pts';
+
+// ---- surface stats
+$('stat').innerHTML = [
+  ['exposed secrets', D.surface.exposed_secrets, D.surface.exposed_secrets > 0],
+  ['weak credentials', D.surface.weak_creds, D.surface.weak_creds > 0],
+  ['known vulns', D.surface.total_vulns, D.surface.total_vulns > 0],
+  ['crown jewels', D.scores.jewels, false],
+].map(([k, v, bad]) =>
+  `<div class="panel"><div class="v ${bad ? 'bad' : ''}">${v}</div><div class="k">${k}</div></div>`).join('');
+
+// ---- zones + nodes
+const zones = { dmz: 'DMZ / internet-facing', lan: 'LAN / internal', mgmt: 'MGMT / control' };
+let html = '';
+for (const [net, label] of Object.entries(zones)) {
+  const assets = D.assets.filter(a => a.net === net);
+  const servers = assets.filter(a => a.kind !== 'workstation');
+  const wss = assets.filter(a => a.kind === 'workstation');
+  html += `<div class="zone"><h3>${label}<span>${assets.length}</span></div>`;
+  for (const a of servers) html += node(a);
+  if (wss.length) {
+    const byDept = {};
+    for (const w of wss) (byDept[w.id.split('-')[1]] ??= []).push(w);
+    for (const [dept, list] of Object.entries(byDept))
+      html += `<div class="chips">` + list.map(w =>
+        `<span class="chip" onclick="show('${w.id}')">${w.id}</span>`).join('') +
+        `</div><div class="chips" style="color:#2e3b32;font-size:9px">^ ${dept} workstations (${list.length})</div>`;
+  }
+  html += '</div>';
+}
+$('zones').innerHTML = html;
+
+function node(a) {
+  const sev = a.vulns.length ? a.vulns.map(v => v.severity) : [];
+  const crit = sev.includes('critical'), high = sev.includes('high');
+  let badges = '';
+  if (a.crown_jewel) badges += '<span class="b jewel">JEWEL</span>';
+  if (crit) badges += '<span class="b crit">CRIT</span>';
+  if (high && !crit) badges += '<span class="b high">HIGH</span>';
+  if (a.leaked) badges += '<span class="b leak">LEAK</span>';
+  return `<div class="node" onclick="show('${a.id}')">
+    <div class="badges">${badges}</div>
+    <div class="id">${a.id}</div><div class="ip">${a.ip}</div>
+    <div class="svcs">${a.services.join(' ') || '-'}</div></div>`;
+}
+
+function show(id) {
+  const a = D.assets.find(x => x.id === id);
+  const held = a.holds.length ? a.holds.join(', ') : 'none';
+  const vulns = a.vulns.length ? a.vulns.map(v =>
+    `${v.id} ${v.kind} (${v.severity})`).join('<br>') : 'none';
+  const data = a.data.length ? a.data.join(', ') : 'none';
+  $('detail').innerHTML = `<span class="x" onclick="detail.style.display='none'">[x]</span>
+    <h4>${a.id}</h4>
+    <div class="row"><b>host</b> ${a.hostname} · ${a.os}</div>
+    <div class="row"><b>net</b> ${a.net} · ${a.ip} · services: ${a.services.join(', ') || '-'}</div>
+    <div class="row"><b>vulns</b><br>${vulns}</div>
+    <div class="row"><b>holds</b> ${held}</div>
+    <div class="row"><b>data</b> ${data}</div>`;
+  $('detail').style.display = 'block';
+}
+
+// ---- incidents + findings
+$('incn').textContent = D.scores.incident_count;
+$('inc').innerHTML = D.incidents.map(i => `
+  <div class="inc"><span class="card">${i.card}</span>
+    <span class="sev ${i.severity}">${i.severity}</span>
+    <span class="st ${i.resolved_day === null ? 'open' : 'res'}">
+    ${i.resolved_day === null ? 'OPEN' : 'FIXED d' + i.resolved_day + ' · MTTR ' + i.mtr_days + 'd'}</span>
+    <div class="meta">day ${i.day} · targets ${i.targets.join(', ')}</div>
+  </div>`).join('') || '<div class="inc"><div class="meta">no incidents yet</div></div>';
+
+$('fndn').textContent = D.findings.length;
+$('fnd').innerHTML = D.findings.map(f => `
+  <div class="fnd">+${f.points} · ${f.label}
+    <div class="meta">day ${f.day} · ${f.id}</div></div>`).join('')
+  || '<div class="fnd" style="color:#2e3b32">no findings submitted</div>';
+</script></body></html>
