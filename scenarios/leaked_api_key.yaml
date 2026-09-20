@@ -1,0 +1,14 @@
+id: leaked_api_key
+weight: 3
+desc: "A developer force-pushes a production API key to a public fork."
+mutate:
+  - pick: secrets[kind=api_key]
+    set:
+      exposure: 1.0
+      location: "public-github/fork-billing-api/.env"
+effects:
+  - new_log_source: github_public_scanner
+defender_expected:
+  - detect: secret scanned in public repo
+  - act: cred.rotate
+  - mttr_target: 4h
