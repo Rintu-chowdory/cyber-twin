@@ -1,0 +1,15 @@
+id: firewall_misconfig
+weight: 2
+desc: "A rushed firewall change exposes an admin console to the internet."
+mutate:
+  - add_vuln:
+      target: web-dmz-01
+      kind: exposed_admin_console
+      severity: high
+  - add_service:
+      target: web-dmz-01
+      service: "admin-console (8080)"
+defender_expected:
+  - detect: new externally reachable port
+  - act: patch_service or restore_backup
+  - mttr_target: 2h

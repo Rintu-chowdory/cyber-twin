@@ -1,0 +1,14 @@
+id: phishing_upload
+weight: 2
+desc: "A phishable employee opens an invoice attachment; a macro doc lands on their workstation."
+mutate:
+  - entity: employees
+    where: {risk: ">=0.6"}
+    set: {risk: 0.95}
+  - add_data:
+      target: "$last.workstation"
+      label: "invoice_2026-09.pdf (macro-enabled)"
+defender_expected:
+  - detect: unusual file write on a workstation
+  - act: "isolate_host (collateral: user lockout - weigh it)"
+  - mttr_target: 4h

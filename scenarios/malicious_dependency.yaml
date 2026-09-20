@@ -1,0 +1,17 @@
+id: malicious_dependency
+weight: 2
+desc: "A typo-squatted package slips into the build; CI artifacts are tainted."
+mutate:
+  - add_vuln:
+      target: ci-runner-01
+      kind: malicious_build_dependency
+      severity: critical
+      grants: [ci-runner-01, db-prod-01]
+  - entity: assets
+    where: {id: ci-runner-01}
+    append:
+      data: "build_artifacts (possibly tainted)"
+defender_expected:
+  - detect: SBOM diff shows new dependency
+  - act: patch_service, then rebuild + rotate exposed creds
+  - mttr_target: 12h

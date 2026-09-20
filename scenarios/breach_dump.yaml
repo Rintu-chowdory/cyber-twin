@@ -1,0 +1,11 @@
+id: breach_dump
+weight: 2
+desc: "An employee's password shows up in a third-party breach dump (password reuse)."
+mutate:
+  - entity: credentials
+    where: {owner: "!=null", strength: ">=0.9"}
+    set: {strength: 0.1}
+defender_expected:
+  - detect: credential reuse alert from breach feed
+  - act: rotate_credential
+  - mttr_target: 4h

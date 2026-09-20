@@ -1,0 +1,16 @@
+id: db_backup_exposed
+weight: 2
+desc: "An unencrypted prod backup lands on the shared drive, world-readable."
+mutate:
+  - add_data:
+      target: files-01
+      label: "backup_prod_2026-09-20.sql (unencrypted, world-readable)"
+  - add_vuln:
+      target: files-01
+      kind: world_readable_backup
+      severity: high
+      grants: [db-prod-01]
+defender_expected:
+  - detect: large file write on files-01, permissions audit
+  - act: patch_service (restrict) or rotate db creds
+  - mttr_target: 8h

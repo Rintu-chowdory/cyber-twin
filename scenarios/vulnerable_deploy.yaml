@@ -1,0 +1,16 @@
+id: vulnerable_deploy
+weight: 3
+desc: "A rushed hotfix ships without review; the new build is vulnerable."
+mutate:
+  - add_vuln:
+      target: web-dmz-01
+      kind: sql_injection
+      severity: critical
+      grants: [db-prod-01]
+  - add_service:
+      target: web-dmz-01
+      service: "http-alt (8080)"
+defender_expected:
+  - detect: new service on web-dmz-01 in flow logs
+  - act: patch_service (or restore_backup)
+  - mttr_target: 8h

@@ -1,0 +1,13 @@
+id: leaked_ssh_key
+weight: 2
+desc: "An engineer pastes a deploy key into a public pastebin while debugging."
+mutate:
+  - entity: secrets
+    where: {kind: ssh_key, exposure: 0.0}
+    set:
+      exposure: 0.8
+      location: "public-pastebin/deploy-key"
+defender_expected:
+  - detect: key material found on paste site
+  - act: rotate_secret
+  - mttr_target: 4h

@@ -1,0 +1,14 @@
+id: overprivileged_access
+weight: 1
+desc: "A contractor gets local admin 'just for this week' and keeps it."
+mutate:
+  - entity: employees
+    where: {admin: false}
+    set: {admin: true}
+  - add_data:
+      target: "$last.workstation"
+      label: "local_admin_rights"
+defender_expected:
+  - detect: privilege escalation in access review diff
+  - act: revoke (world diff review)
+  - mttr_target: 24h

@@ -24,7 +24,7 @@ The AI defender reasons over state + real service logs, not fiction.
 
 - [x] Phase 1 — World model (schema + deterministic seeder)
 - [x] Phase 2 — Compiler: world -> docker-compose (3 networks, attacker on dmz, defender-api on mgmt)
-- [x] Phase 3 — Scenario tick (1 card: leaked_api_key)
+- [x] Phase 3 — Scenario tick (9 weighted cards + `--random` daily draw)
 - [x] Phase 4 — Defender control API (reads, actions, daily budget, collateral)
 - [ ] Phase 5 — Kubernetes port (RBAC / ServiceAccount attack paths)
 
@@ -45,9 +45,13 @@ docker compose up -d
 # 4. attack from the attacker box (dmz only - pivot to reach the lan)
 docker compose exec attacker bash
 
-# 5. advance a day: apply a scenario card and recompile
-python -m tick --scenario scenarios/leaked_api_key.yaml
+# 5. advance a day: draw a weighted random scenario, then recompile
+python -m tick --random
 python -m compiler.materialize --world world.json
+
+#    or apply a specific card, or list the library
+python -m tick --scenario scenarios/phishing_upload.yaml
+python -m tick --list
 ```
 
 ## Rules of the game
@@ -81,9 +85,35 @@ defender can't just nuke everything.
 world/schema.py          dataclasses: Employee, Asset, Credential, Secret, Vuln
 world/seed.py            deterministic org generator (--seed)
 compiler/materialize.py  world.json -> docker-compose.yml
-scenarios/*.yaml          daily mutation cards
-tick.py                  apply a card, bump the day, save
+scenarios/*.yaml          daily mutation cards (weight, predicates, expected response)
+tick.py                  apply a card (weighted --random or explicit), bump the day
+defender/agent.py         observe -> decide -> act loop skeleton (LLM hook marked)
+control/api.py            defender control plane (reads, actions, budget)
 ```
+
+## Scenario library
+
+Nine weighted cards drive the daily drift (weight = relative chance
+in the `--random` draw). Cards carry predicates, so a card that no
+longer applies (secret already leaked, vuln already present) skips
+itself instead of double-applying:
+
+| weight | card                  | what happens                                      |
+|--------|-----------------------|---------------------------------------------------|
+| 3      | leaked_api_key        | API key pushed to a public GitHub fork            |
+| 3      | vulnerable_deploy     | unreviewed hotfix adds SQLi to web-dmz-01         |
+| 2      | phishing_upload       | high-risk employee lands a macro doc on their PC  |
+| 2      | breach_dump           | a strong password appears in a breach dump        |
+| 2      | firewall_misconfig    | admin console exposed to the internet             |
+| 2      | leaked_ssh_key        | deploy key pasted to a public pastebin            |
+| 2      | db_backup_exposed     | unencrypted prod backup on the world-readable share |
+| 2      | malicious_dependency  | typo-squatted package taints CI artifacts         |
+| 1      | overprivileged_access | contractor keeps local admin                     |
+
+Each card also declares what the defender is expected to do
+(`defender_expected`) - that's the raw material for the scoring system.
+The attacker-vs-defender rematch writes itself: once the defender
+rotates the leaked key, the card becomes eligible again on a later day.
 
 ## Defender control API (phase 4)
 
