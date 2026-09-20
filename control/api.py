@@ -33,6 +33,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from score import compute_scores
 from world.schema import World
 
 WORLD_PATH = Path(os.environ.get("WORLD_PATH", "world.json"))
@@ -48,9 +49,12 @@ COSTS = {
     "rotate_secret": 2,
     "patch_service": 5,
     "restore_backup": 20,
+    "revoke_admin": 2,
 }
 
 _IP_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
+
+from score import ATTACKER_POINTS  # noqa: E402
 
 app = FastAPI(title="cyber-twin control plane")
 _LOCK = threading.Lock()
@@ -59,10 +63,13 @@ _LOCK = threading.Lock()
 # ------------------------------------------------------------------ state
 
 def _load_state() -> dict:
+    state = {"day": 0, "budget_used": 0, "blocked_ips": [],
+             "actions": [], "collateral": [], "incidents": [], "findings": []}
     if STATE_PATH.exists():
-        return json.loads(STATE_PATH.read_text())
-    return {"day": 0, "budget_used": 0, "blocked_ips": [],
-            "actions": [], "collateral": []}
+        state.update(json.loads(STATE_PATH.read_text()))
+    state.setdefault("incidents", [])
+    state.setdefault("findings", [])
+    return state
 
 
 def _save_state(state: dict) -> None:
@@ -234,6 +241,15 @@ def _apply(world: World, state: dict, req: Action) -> dict:
         world.vulns = [v for v in world.vulns if v.id != req.param]
         return {"patched": req.param, "on": req.target}
 
+    if req.action == "revoke_admin":
+        emp = idx["employees"].get(req.target)
+        if emp is None:
+            raise HTTPException(404, f"unknown employee {req.target}")
+        if not emp.admin:
+            return {"already_revoked": req.target}
+        emp.admin = False
+        return {"revoked": req.target}
+
     if req.action == "restore_backup":
         asset = idx["assets"].get(req.target)
         if asset is None:
@@ -273,3 +289,76 @@ def act(req: Action):
     return {"ok": True, "cost": cost,
             "budget_remaining": DAILY_BUDGET - state["budget_used"],
             "result": result}
+
+
+# ------------------------------------------------------- attacker reports
+
+class Finding(BaseModel):
+    kind: str          # "credential" | "asset_access"
+    id: str            # credential id, or asset id for asset_access
+    credential: Optional[str] = None   # for asset_access: the compromised cred
+    proof: str         # the actual secret value (checked against the world)
+
+
+@app.post("/report")
+def report(req: Finding):
+    """Attacker claims a finding with proof. No proof, no points.
+
+    Wrong proof (e.g. an old, already-rotated password) scores nothing -
+    the defender's rotate actions genuinely invalidate stolen creds.
+    """
+    with _LOCK:
+        state = _load_state()
+        world = World.load(WORLD_PATH)
+        idx = world.index()
+
+        if req.kind == "credential":
+            cred = idx["credentials"].get(req.id)
+            if cred is None:
+                raise HTTPException(404, f"unknown credential {req.id}")
+            asset_id = None
+        elif req.kind == "asset_access":
+            cred = idx["credentials"].get(req.credential or "")
+            if cred is None:
+                raise HTTPException(404, f"unknown credential {req.credential}")
+            if req.id not in cred.grants:
+                raise HTTPException(
+                    400, f"credential {cred.id} does not grant access to {req.id}")
+            asset_id = req.id
+        else:
+            raise HTTPException(400, "kind must be 'credential' or 'asset_access'")
+
+        if req.proof != cred.password:
+            raise HTTPException(
+                400, "invalid proof - value does not match (maybe rotated)")
+
+        if (req.kind, req.id) in {(f["kind"], f["id"]) for f in state["findings"]}:
+            return {"ok": False, "already_claimed": True}
+
+        if req.kind == "credential":
+            key = "credential_strong" if cred.strength >= 0.9 else "credential_weak"
+            label = f"compromised credential {cred.id} ({cred.username})"
+        else:
+            asset = idx["assets"][asset_id]
+            if asset.crown_jewel:
+                key = "crown_jewel"
+                label = f"reached crown jewel {asset.id}"
+            else:
+                key = "asset_dmz" if asset.net == "dmz" else "asset_lan"
+                label = f"reached {asset.id} ({asset.net})"
+        points = ATTACKER_POINTS[key]
+
+        finding = {"day": world.day, "kind": req.kind, "id": req.id,
+                   "label": label, "points": points}
+        state["findings"].append(finding)
+        _save_state(state)
+
+    return {"ok": True, "awarded": points, "finding": finding}
+
+
+@app.get("/score")
+def get_score():
+    world = World.load(WORLD_PATH)
+    with _LOCK:
+        state = _load_state()
+    return compute_scores(world, state)

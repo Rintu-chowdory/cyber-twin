@@ -115,6 +115,37 @@ Each card also declares what the defender is expected to do
 The attacker-vs-defender rematch writes itself: once the defender
 rotates the leaked key, the card becomes eligible again on a later day.
 
+## Scoring (phase 6)
+
+It's a game now:
+
+**Attacker** submits findings with proof to `POST /report`:
+
+```json
+{"kind": "credential", "id": "c00042", "proof": "<actual password>"}
+{"kind": "asset_access", "id": "db-prod-01", "credential": "c00181", "proof": "<password>"}
+```
+
+Points: weak credential 10, strong credential 25, dmz asset 5, lan asset
+15, **crown jewel 50**. No proof, no points - and a proof that no longer
+matches (the defender rotated it) is worth nothing, so rotations bite.
+
+**Defender** scores per incident: severity points (critical 50 / high 35 /
+medium 20 / low 10) minus 15 per day of delay, floor 0. Every incident a
+day of drift stays unresolved decays toward zero. Collateral (isolating a
+workstation = locking out a user) costs 10 per event.
+
+`python -m score` prints the scoreboard; `python -m score --html
+site/index.html` writes the publishable page. Play a scripted demo round:
+
+    python -m world.seed && uvicorn control.api:app & python demo_game.py
+
+## Scoreboard page
+
+`site/index.html` is deployed as a static site - commits to main
+auto-deploy it. Regenerate after a game with
+`python -m score --html site/index.html`, commit, push.
+
 ## Defender control API (phase 4)
 
 The defender's whole world goes through `http://localhost:8000`:

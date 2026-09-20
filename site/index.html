@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cyber Twin - scoreboard</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+          background: #0b0e14; color: #c9d1d9; padding: 2.5rem 1rem; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; letter-spacing: .2em; margin: 0 0 .2rem; }
+  .sub { color: #8b949e; margin: 0 0 2rem; }
+  .tiles { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+  .tile { border: 1px solid #21262d; border-radius: 10px; padding: 1.2rem 1.4rem; }
+  .tile.att { border-color: #f8514966; }
+  .tile.def { border-color: #3fb95066; }
+  .tile h2 { margin: 0; font-size: .75rem; letter-spacing: .15em;
+              text-transform: uppercase; color: #8b949e; }
+  .tile .pts { font-size: 2.6rem; font-weight: 700; margin-top: .3rem; }
+  .att .pts { color: #f85149; } .def .pts { color: #3fb950; }
+  .tile .meta { color: #8b949e; font-size: .8rem; margin-top: .4rem; }
+  h3 { margin: 2.2rem 0 .6rem; font-size: .8rem; letter-spacing: .15em;
+        text-transform: uppercase; color: #8b949e; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid #21262d; }
+  th { color: #8b949e; font-weight: 400; font-size: .75rem;
+        text-transform: uppercase; letter-spacing: .1em; }
+  td.num { text-align: right; }
+  tr.open td { background: #f8514912; }
+  .none { color: #484f58; }
+  .sev { font-size: .7rem; padding: .1rem .45rem; border-radius: 99px;
+          border: 1px solid #30363d; text-transform: uppercase; }
+  .sev.critical { color: #f85149; border-color: #f8514966; }
+  .sev.high { color: #d29922; border-color: #d2992266; }
+  .sev.medium { color: #58a6ff; border-color: #58a6ff66; }
+  .sev.low { color: #8b949e; }
+  footer { margin-top: 3rem; color: #484f58; font-size: .75rem; }
+</style></head><body><div class="wrap">
+<h1>CYBER TWIN</h1>
+<p class="sub">Nimbus Dynamics &middot; day 5 &middot; attacker vs defender</p>
+<div class="tiles">
+  <div class="tile att"><h2>Attacker</h2>
+    <div class="pts">85 pts</div>
+    <div class="meta">3 findings submitted</div></div>
+  <div class="tile def"><h2>Defender</h2>
+    <div class="pts">20 pts</div>
+    <div class="meta">avg MTTR 2.7d &middot; 2 unresolved &middot;
+      0 collateral &middot; 3 actions</div></div>
+</div>
+<h3>Incidents (daily drift)</h3>
+<table><tr><th>Day</th><th>Card</th><th>Severity</th><th>Targets</th>
+<th>Status</th><th style="text-align:right">Pts</th></tr>
+<tr class="ok"><td>1</td><td>vulnerable_deploy</td><td><span class="sev critical">critical</span></td><td>v0007, web-dmz-01</td><td>resolved day 5 (MTTR 4d)</td><td class="num">0</td></tr><tr class="ok"><td>2</td><td>firewall_misconfig</td><td><span class="sev high">high</span></td><td>v0008, web-dmz-01</td><td>resolved day 5 (MTTR 3d)</td><td class="num">0</td></tr><tr class="open"><td>3</td><td>db_backup_exposed</td><td><span class="sev high">high</span></td><td>files-01, v0009</td><td>OPEN</td><td class="num">0</td></tr><tr class="ok"><td>4</td><td>leaked_ssh_key</td><td><span class="sev high">high</span></td><td>s0005</td><td>resolved day 5 (MTTR 1d)</td><td class="num">20</td></tr><tr class="open"><td>5</td><td>malicious_dependency</td><td><span class="sev critical">critical</span></td><td>ci-runner-01, v0010</td><td>OPEN</td><td class="num">0</td></tr></table>
+<h3>Attacker findings</h3>
+<table><tr><th>Day</th><th>Kind</th><th>Claim</th>
+<th style="text-align:right">Pts</th></tr><tr><td>5</td><td>credential</td><td>compromised credential c00006 (anya.costa)</td><td class="num">10</td></tr><tr><td>5</td><td>credential</td><td>compromised credential c00001 (soren.kim)</td><td class="num">25</td></tr><tr><td>5</td><td>asset_access</td><td>reached crown jewel db-prod-01</td><td class="num">50</td></tr></table>
+<footer>Regenerate with <code>python -m score --html site/index.html</code>,
+then commit and push - the page auto-deploys.</footer>
+</div></body></html>
