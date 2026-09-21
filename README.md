@@ -90,6 +90,7 @@ tick.py                  apply a card (weighted --random or explicit), bump the 
 tools/recon.py           passive recon: public attack surface, leaks, weak-cred candidates
 tools/crack.py           wordlist attack on user accounts (--report scores the cracks)
 tools/attack_paths.py    BFS from the internet to every crown jewel, with the exact chain
+tools/wifi.py            wireless: scan SSIDs, wordlist psk crack, WPS pin attack
 dashboard.py             generates the live hacking dashboard (site/index.html)
 defender/agent.py         observe -> decide -> act loop skeleton (LLM hook marked)
 control/api.py            defender control plane (reads, actions, budget)
@@ -162,6 +163,9 @@ python -m tools.recon            # what an outsider sees
 python -m tools.crack            # wordlist attack on user accounts
 python -m tools.crack --report   # ... and score the cracks via the API
 python -m tools.attack_paths     # internet -> crown jewel, exact chain
+python -m tools.wifi             # scan SSIDs
+python -m tools.wifi --crack     # wordlist attack on WPA2 PSKs + WPS pin
+python -m tools.wifi --report    # score cracked psks via the control API
 ```
 
 `attack_paths.py` is also the defender's triage tool: cut the cheapest
@@ -180,7 +184,15 @@ The chain the tool finds:
       --sa token sa-001 (billing-api) - rbac: secrets.list--> db-hr-01
 
 The `privileged_pod` scenario card drifts the cluster daily (privileged
-container -> node escape). The dashboard has a K8S/CLUSTER zone, RBAC
+container -> node escape).
+
+### Wireless attack surface
+
+`Nimbus-Corp` runs WPA2-PSK with the same weak passphrase half the org
+uses as a password - a parking-lot wordlist attack lands straight on
+engineering workstations. `Nimbus-Guest` is open. `Nimbus-IoT` has WPS
+enabled (pin attack). Cracked wifi is an entry edge in
+`attack_paths.py`, and the dashboard has a WIRELESS / WIFI panel. The dashboard has a K8S/CLUSTER zone, RBAC
 badges on pods and a SERVICE ACCOUNTS / RBAC panel.
 
 ## Scoreboard page (legacy simple board)

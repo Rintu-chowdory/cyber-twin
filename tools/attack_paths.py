@@ -14,6 +14,7 @@ import argparse
 from collections import defaultdict, deque
 
 from world.schema import World
+from world.seed import WEAK_PASSWORDS
 
 
 def build_graph(world: World):
@@ -76,6 +77,14 @@ def build_graph(world: World):
             for tgt in sa.escalates_to:
                 link(pod, tgt, f"sa token {sa.id} ({sa.name}) - "
                                 f"rbac: {', '.join(sa.permissions) or 'none'}")
+
+    # wifi: an open SSID or a cracked psk is network position - an
+    # attacker in the parking lot joins straight onto its clients
+    for w in getattr(world, "wifi_networks", []):
+        if w.security == "open" or w.psk in WEAK_PASSWORDS:
+            for c in w.clients:
+                link("__internet__", c,
+                     f"wifi {w.ssid} ({w.security}, psk cracked in wordlist)")
 
     # the internet can reach every DMZ host
     for a in world.assets:

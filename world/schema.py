@@ -87,6 +87,16 @@ class ServiceAccount:
 
 
 @dataclass
+class WifiNetwork:
+    id: str
+    ssid: str
+    security: str                       # wpa2-psk | wpa3-psk | open
+    psk: str = ""                       # lab-only plaintext
+    wps: bool = False
+    clients: list[str] = field(default_factory=list)   # workstation ids
+
+
+@dataclass
 class World:
     org: dict
     employees: list[Employee]
@@ -95,6 +105,7 @@ class World:
     secrets: list[Secret]
     vulns: list[Vuln]
     service_accounts: list[ServiceAccount]
+    wifi_networks: list[WifiNetwork]
     day: int = 0
 
     def to_dict(self) -> dict:
@@ -116,6 +127,7 @@ class World:
             secrets=[Secret(**s) for s in d["secrets"]],
             vulns=[Vuln(**v) for v in d["vulns"]],
             service_accounts=[ServiceAccount(**sa) for sa in d.get("service_accounts", [])],
+            wifi_networks=[WifiNetwork(**w) for w in d.get("wifi_networks", [])],
             day=d.get("day", 0),
         )
 
@@ -128,4 +140,5 @@ class World:
             "secrets": {s.id: s for s in self.secrets},
             "vulns": {v.id: v for v in self.vulns},
             "service_accounts": {sa.id: sa for sa in self.service_accounts},
+            "wifi_networks": {w.id: w for w in self.wifi_networks},
         }

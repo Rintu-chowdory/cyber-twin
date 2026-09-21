@@ -79,6 +79,12 @@ def main() -> None:
           {"kind": "asset_access", "id": "db-hr-01",
            "credential": hr["id"], "proof": hr["password"]}))
 
+    # wifi crack from the parking lot: Nimbus-Corp runs the same weak
+    # psk half the org uses - join the corporate wlan, then pivot
+    wifi = next(c for c in world["credentials"] if c["kind"] == "wifi_psk")
+    print("attacker (wifi crack):", call("POST", "/report",
+          {"kind": "credential", "id": wifi["id"], "proof": wifi["password"]}))
+
     # defender remediates what it can see
     state = json.loads(Path("control/state.json").read_text())
     # remediate all but the most recent incident - leave one OPEN on the board

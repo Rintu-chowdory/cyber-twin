@@ -16,6 +16,7 @@ from pathlib import Path
 
 from score import compute_scores
 from world.schema import World
+from world.seed import WEAK_PASSWORDS
 
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -121,6 +122,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     <div class="panel"><h2>INCIDENT FEED <b id="incn"></b></h2><div class="feed" id="inc"></div></div>
     <div class="panel" style="margin-top:10px"><h2>ATTACKER FINDINGS <b id="fndn"></b></h2><div class="feed" id="fnd"></div></div>
     <div class="panel" style="margin-top:10px"><h2>SERVICE ACCOUNTS / RBAC <b id="san"></b></h2><div class="feed" id="sa"></div></div>
+    <div class="panel" style="margin-top:10px"><h2>WIRELESS / WIFI <b id="wfn"></b></h2><div class="feed" id="wf"></div></div>
   </div>
 </div>
 <div id="detail"></div>
@@ -218,6 +220,16 @@ $('fndn').textContent = D.findings.length + ' live';
 // ---- RBAC panel
 const over = D.service_accounts.filter(s => s.overprivileged).length;
 $('san').textContent = over + ' overprivileged';
+// ---- wifi panel
+const wfc = D.wifi.filter(w => w.cracked).length;
+$('wfn').textContent = wfc + ' cracked';
+$('wf').innerHTML = D.wifi.map(w => `
+  <div class="inc"><span class="card">${w.ssid}</span>
+    ${w.cracked ? '<span class="st open">CRACKED</span>' : '<span class="st res">secure</span>'}
+    ${w.wps ? '<span class="sev medium">WPS</span>' : ''}
+    <div class="meta">${w.security} · ${w.clients} clients${w.cracked && w.psk ? ' · psk: ' + w.psk : w.security === 'open' ? ' · open network' : ''}</div>
+  </div>`).join('');
+
 $('sa').innerHTML = D.service_accounts.map(s => `
   <div class="inc"><span class="card">${s.name}</span>
     ${s.overprivileged ? '<span class="st open">OVERPRIVILEGED</span>' : '<span class="st res">ok</span>'}
@@ -291,7 +303,12 @@ def build_payload(world: World, state: dict) -> dict:
             "permissions": sa.permissions, "mounts": sa.mounts,
             "overprivileged": sa.overprivileged,
             "escalates_to": sa.escalates_to,
-        } for sa in world.service_accounts],
+        } for sa in world.service_accounts],        "wifi": [{
+            "id": w.id, "ssid": w.ssid, "security": w.security, "wps": w.wps,
+            "clients": len(w.clients),
+            "cracked": w.security == "open" or w.psk in WEAK_PASSWORDS,
+            "psk": w.psk if (w.security == "open" or w.psk in WEAK_PASSWORDS) else None,
+        } for w in world.wifi_networks],
         "incidents": [{
             "card": i["card"], "day": i["day"], "severity": i["severity"],
             "targets": i["targets"], "resolved_day": i["resolved_day"],

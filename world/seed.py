@@ -6,7 +6,7 @@ import random
 from pathlib import Path
 
 from world.schema import (World, Employee, Asset, Credential, Secret, Vuln,
-                          ServiceAccount)
+                          ServiceAccount, WifiNetwork)
 
 FIRST = [
     "Priya", "Marcus", "Elena", "Tomas", "Aisha", "Jonas", "Mei", "Diego",
@@ -246,6 +246,24 @@ def build(seed: int = 1337) -> World:
                       grants=["billing-api-pod"]))
     k8s_assets[1].vulns.append("v0007")
 
+    # ---------- corporate wifi ----------
+    eng_ws = [a.id for a in assets if a.id.startswith("ws-eng-")][:3]
+    fin_ws = [a.id for a in assets if a.id.startswith("ws-fin-")][:2]
+    wifi_networks = [
+        WifiNetwork(id="w0001", ssid="Nimbus-Corp", security="wpa2-psk",
+                    psk="Summer2026!", wps=False, clients=eng_ws),
+        WifiNetwork(id="w0002", ssid="Nimbus-Guest", security="open",
+                    clients=[]),
+        WifiNetwork(id="w0003", ssid="Nimbus-IoT", security="wpa2-psk",
+                    psk=f"Nimbus-IoT-{rng.randrange(10**9):09d}", wps=True,
+                    clients=fin_ws),
+    ]
+    # the corp psk doubles as a credential so it can be cracked + scored
+    credentials.append(Credential(
+        id=f"c{len(credentials) + 1:05d}", username="Nimbus-Corp",
+        password="Summer2026!", kind="wifi_psk", strength=0.2,
+        owner=None, grants=eng_ws))
+
     # ---------- seed one accidental exposure (day-0 incident) ----------
     secrets[0].exposure = 1.0
     secrets[0].location = "public-github/fork-billing-api/.env"
@@ -258,6 +276,7 @@ def build(seed: int = 1337) -> World:
         secrets=secrets,
         vulns=vulns,
         service_accounts=service_accounts,
+        wifi_networks=wifi_networks,
         day=0,
     )
 
