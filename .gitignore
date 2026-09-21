@@ -9,3 +9,4 @@ docker-compose.yml
 volumes/
 history/
 control/state.json
+runtime/generated/
