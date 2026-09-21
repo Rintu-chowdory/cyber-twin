@@ -66,6 +66,11 @@ TEMPLATE = r"""<!DOCTYPE html>
   .b.high { color:var(--amber); border-color:var(--amber); }
   .b.jewel { color:#000; background:var(--hot); border-color:var(--hot); }
   .b.leak { color:#000; background:var(--red); border-color:var(--red); }
+  .b.own { color:#000; background:var(--red); border-color:var(--red); font-weight:700; }
+  .b.cred { color:var(--red); border-color:var(--red); }
+  .node.own { border-color:var(--red); box-shadow:0 0 14px rgba(255,77,94,.35); }
+  .node.own .id { color:var(--red); }
+  .chip.own { color:var(--red); border-color:var(--red); }
   .chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
   .chip { font-size:10px; border:1px solid var(--line); color:var(--dim);
     padding:1px 5px; cursor:pointer; }
@@ -148,7 +153,7 @@ for (const [net, label] of Object.entries(zones)) {
     for (const w of wss) (byDept[w.id.split('-')[1]] ??= []).push(w);
     for (const [dept, list] of Object.entries(byDept))
       html += `<div class="chips">` + list.map(w =>
-        `<span class="chip" onclick="show('${w.id}')">${w.id}</span>`).join('') +
+        `<span class="chip${w.cred_breach ? ' own' : ''}" onclick="show('${w.id}')">${w.id}${w.cred_breach ? ' !' : ''}</span>`).join('') +
         `</div><div class="chips" style="color:#2e3b32;font-size:9px">^ ${dept} workstations (${list.length})</div>`;
   }
   html += '</div>';
@@ -159,11 +164,13 @@ function node(a) {
   const sev = a.vulns.length ? a.vulns.map(v => v.severity) : [];
   const crit = sev.includes('critical'), high = sev.includes('high');
   let badges = '';
+  if (a.owned) badges += '<span class="b own">OWNED</span>';
   if (a.crown_jewel) badges += '<span class="b jewel">JEWEL</span>';
   if (crit) badges += '<span class="b crit">CRIT</span>';
   if (high && !crit) badges += '<span class="b high">HIGH</span>';
   if (a.leaked) badges += '<span class="b leak">LEAK</span>';
-  return `<div class="node" onclick="show('${a.id}')">
+  if (a.cred_breach) badges += '<span class="b cred">CRACKED</span>';
+  return `<div class="node${a.owned ? ' own' : ''}" onclick="show('${a.id}')">
     <div class="badges">${badges}</div>
     <div class="id">${a.id}</div><div class="ip">${a.ip}</div>
     <div class="svcs">${a.services.join(' ') || '-'}</div></div>`;
@@ -175,8 +182,10 @@ function show(id) {
   const vulns = a.vulns.length ? a.vulns.map(v =>
     `${v.id} ${v.kind} (${v.severity})`).join('<br>') : 'none';
   const data = a.data.length ? a.data.join(', ') : 'none';
+  const breach = a.owned ? '<div class="row" style="color:var(--red)">COMPROMISED - attacker access confirmed</div>'
+    : a.cred_breach ? '<div class="row" style="color:var(--red)">OWNER CREDENTIALS CRACKED</div>' : '';
   $('detail').innerHTML = `<span class="x" onclick="detail.style.display='none'">[x]</span>
-    <h4>${a.id}</h4>
+    <h4>${a.id}</h4>${breach}
     <div class="row"><b>host</b> ${a.hostname} · ${a.os}</div>
     <div class="row"><b>net</b> ${a.net} · ${a.ip} · services: ${a.services.join(', ') || '-'}</div>
     <div class="row"><b>vulns</b><br>${vulns}</div>
@@ -195,9 +204,9 @@ $('inc').innerHTML = D.incidents.map(i => `
     <div class="meta">day ${i.day} · targets ${i.targets.join(', ')}</div>
   </div>`).join('') || '<div class="inc"><div class="meta">no incidents yet</div></div>';
 
-$('fndn').textContent = D.findings.length;
+$('fndn').textContent = D.findings.length + ' live';
 $('fnd').innerHTML = D.findings.map(f => `
-  <div class="fnd">+${f.points} · ${f.label}
+  <div class="fnd">+${f.points} · <span style="color:var(--amber)">${f.kind}</span> · ${f.label}
     <div class="meta">day ${f.day} · ${f.id}</div></div>`).join('')
   || '<div class="fnd" style="color:#2e3b32">no findings submitted</div>';
 </script></body></html>"""
@@ -205,6 +214,21 @@ $('fnd').innerHTML = D.findings.map(f => `
 
 def build_payload(world: World, state: dict) -> dict:
     sc = compute_scores(world, state)
+
+    # map findings onto assets: crown-jewel hits mark the asset OWNED,
+    # cracked credentials mark the owner's workstation
+    owned_assets = set()
+    cracked_ws = set()
+    for f in sc["attacker"]["findings"]:
+        if f["kind"] == "asset_access":
+            owned_assets.add(f["id"])
+        elif f["kind"] == "credential":
+            cred = next((c for c in world.credentials if c.id == f["id"]), None)
+            if cred and cred.owner:
+                ws = next((a for a in world.assets if a.owner == cred.owner
+                           and a.kind == "workstation"), None)
+                if ws:
+                    cracked_ws.add(ws.id)
     vuln_by_on: dict[str, list] = {}
     for v in world.vulns:
         vuln_by_on.setdefault(v.on, []).append(
@@ -215,6 +239,8 @@ def build_payload(world: World, state: dict) -> dict:
         "vulns": vuln_by_on.get(a.id, []), "holds": a.holds,
         "data": a.data, "crown_jewel": a.crown_jewel,
         "leaked": any(s.id in a.holds and s.exposure > 0 for s in world.secrets),
+        "owned": a.id in owned_assets,
+        "cred_breach": a.id in cracked_ws,
     } for a in world.assets]
 
     return {
