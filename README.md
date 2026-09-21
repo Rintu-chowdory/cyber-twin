@@ -36,23 +36,49 @@ pip install -r requirements.txt
 # 1. generate the org (deterministic: same seed = same company)
 python -m world.seed --seed 1337 --out world.json
 
-# 2. compile it into docker-compose.yml
-python -m compiler.materialize --world world.json
+# 2. materialize it into a REAL container stack
+python -m compiler.materialize --world world.json --out runtime/generated
 
-# 3. run the company (needs Docker)
-docker compose up -d
+# 3. boot the company (needs Docker)
+docker compose -f runtime/generated/docker-compose.yml up -d --build
 
-# 4. attack from the attacker box (dmz only - pivot to reach the lan)
-docker compose exec attacker bash
-
-# 5. advance a day: draw a weighted random scenario, then recompile
-python -m tick --random
-python -m compiler.materialize --world world.json
-
-#    or apply a specific card, or list the library
-python -m tick --scenario scenarios/phishing_upload.yaml
-python -m tick --list
+# 4. the company is live:
+#    http://localhost:8080            - Nimbus Dynamics public site (real logins)
+#    http://localhost:8000/state      - defender API
 ```
+
+## What actually runs now
+
+Real containers, real software, credentials straight from the world
+model (so tools/crack.py output really works):
+
+- **web-dmz-01** - Flask + gunicorn, dual-homed dmz/corp. Employee
+  logins check the provisioned passwords. Seeded flaws are real code:
+  `/fetch` is a working SSRF (http AND file scheme) and the only
+  network pivot from dmz into corp; `/fork-billing-api/.env` serves
+  the day-0 leak, including the real db-prod-01 password.
+- **gitea-01** - git over ssh (git-shell), bare repo `billing-api`
+  seeded at first boot with the same leaked `.env`.
+- **db-prod-01 / db-hr-01** - real Postgres 16 with generated
+  customer PII and the actual 120-employee org chart. Passwords from
+  the world model; NOT published to the host - you must pivot.
+- **workstations + jump-01** - real sshd; each box provisions its
+  owner's credentials. 12 materialized by default
+  (`--workstations N` to change).
+- **api** - the defender control plane, on the mgmt network.
+- **attacker** (profile) - kali box on dmz: external starting position.
+  **attacker-corp** (profile `onnet`) - kali box inside corp: simulates
+  a cracked-wifi / insider position.
+
+```bash
+docker compose -f runtime/generated/docker-compose.yml --profile attacker run --rm attacker bash
+# in the kali box: apt update && apt install -y nmap sqlmap ssh ...
+```
+
+Docker's inter-network isolation enforces the zones: the dmz can reach
+nothing on corp except through web-dmz-01's SSRF, or by cracking wifi
+(the onnet profile). WiFi radios and a live k8s cluster are the two
+pieces still simulated rather than containerized.
 
 ## Rules of the game
 
