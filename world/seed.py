@@ -5,7 +5,8 @@ import argparse
 import random
 from pathlib import Path
 
-from world.schema import Asset, Credential, Employee, Secret, Vuln, World
+from world.schema import (World, Employee, Asset, Credential, Secret, Vuln,
+                          ServiceAccount)
 
 FIRST = [
     "Priya", "Marcus", "Elena", "Tomas", "Aisha", "Jonas", "Mei", "Diego",
@@ -209,6 +210,42 @@ def build(seed: int = 1337) -> World:
         ))
         assets_by_id[on].vulns.append(vid)
 
+    # ---------- kubernetes cluster ----------
+    k8s_assets = [
+        Asset(id="ingress-01", kind="server", hostname="ingress-01.nimbus.local",
+              ip="10.10.0.40", net="dmz", os="ubuntu-24.04", services=["http"],
+              data=["ingress:billing-api-pod"]),
+        Asset(id="billing-api-pod", kind="pod", hostname="billing-api-pod.nimbus.local",
+              ip="10.25.0.11", net="k8s", os="container", services=["http"]),
+        Asset(id="metrics-pod", kind="pod", hostname="metrics-pod.nimbus.local",
+              ip="10.25.0.12", net="k8s", os="container"),
+        Asset(id="k8s-node-01", kind="node", hostname="k8s-node-01.nimbus.local",
+              ip="10.25.0.2", net="k8s", os="ubuntu-24.04", services=["kubelet"]),
+    ]
+    assets.extend(k8s_assets)
+
+    # the pod's mounted service-account token (by design - every pod has one)
+    secrets.append(Secret(
+        id="s0006", kind="service_account_token",
+        location="billing-api-pod:/var/run/secrets/kubernetes.io/serviceaccount/token",
+        unlocks=[]))
+    k8s_assets[1].holds.append("s0006")
+
+    service_accounts = [
+        ServiceAccount(id="sa-001", name="billing-api", namespace="payments",
+                       permissions=["secrets.list", "pods.list"],
+                       mounts=["billing-api-pod"], overprivileged=True,
+                       escalates_to=["db-hr-01"]),
+        ServiceAccount(id="sa-002", name="default", namespace="payments",
+                       permissions=[], mounts=["metrics-pod"], overprivileged=False),
+    ]
+
+    # internet-facing billing API behind the ingress has an auth bypass
+    vulns.append(Vuln(id="v0007", kind="api_auth_bypass", on="billing-api-pod",
+                      severity="high", requires=[],
+                      grants=["billing-api-pod"]))
+    k8s_assets[1].vulns.append("v0007")
+
     # ---------- seed one accidental exposure (day-0 incident) ----------
     secrets[0].exposure = 1.0
     secrets[0].location = "public-github/fork-billing-api/.env"
@@ -220,6 +257,7 @@ def build(seed: int = 1337) -> World:
         credentials=credentials,
         secrets=secrets,
         vulns=vulns,
+        service_accounts=service_accounts,
         day=0,
     )
 

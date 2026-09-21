@@ -26,7 +26,7 @@ The AI defender reasons over state + real service logs, not fiction.
 - [x] Phase 2 — Compiler: world -> docker-compose (3 networks, attacker on dmz, defender-api on mgmt)
 - [x] Phase 3 — Scenario tick (9 weighted cards + `--random` daily draw)
 - [x] Phase 4 — Defender control API (reads, actions, daily budget, collateral)
-- [ ] Phase 5 — Kubernetes port (RBAC / ServiceAccount attack paths)
+- [x] Phase 5 — Kubernetes attack paths: SA tokens, overprivileged RBAC, ingress chains (world model + attack graph + dashboard; live cluster materialization still future)
 
 ## Quickstart
 
@@ -167,6 +167,21 @@ python -m tools.attack_paths     # internet -> crown jewel, exact chain
 `attack_paths.py` is also the defender's triage tool: cut the cheapest
 link in each chain first (rotate the leaked key and the shortest path
 to `db-prod-01` dies).
+
+### Kubernetes attack paths
+
+The world now carries a cluster slice: `ingress-01` (dmz) routes to
+`billing-api-pod`, whose mounted service-account token (`s0006`)
+belongs to the overprivileged `sa-001` (`secrets.list`, `pods.list`).
+The chain the tool finds:
+
+    internet -> ingress-01 --ingress route--> billing-api-pod
+      --vuln v0007 (api_auth_bypass)--> billing-api-pod
+      --sa token sa-001 (billing-api) - rbac: secrets.list--> db-hr-01
+
+The `privileged_pod` scenario card drifts the cluster daily (privileged
+container -> node escape). The dashboard has a K8S/CLUSTER zone, RBAC
+badges on pods and a SERVICE ACCOUNTS / RBAC panel.
 
 ## Scoreboard page (legacy simple board)
 

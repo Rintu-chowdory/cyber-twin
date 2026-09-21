@@ -48,8 +48,10 @@ TEMPLATE = r"""<!DOCTYPE html>
     padding:8px 12px; border-bottom:1px solid var(--line);
     display:flex; justify-content:space-between; }
   .panel h2 b { color:var(--txt); }
-  .zones { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:10px; }
+  .zones { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:10px; }
+  @media (max-width:1100px){ .zones{grid-template-columns:repeat(2,1fr)} }
   @media (max-width:700px){ .zones{grid-template-columns:1fr} }
+  .b.rbac { color:#000; background:var(--amber); border-color:var(--amber); font-weight:700; }
   .zone { border:1px dashed var(--line); padding:8px; min-height:120px; }
   .zone h3 { font-size:10px; letter-spacing:.2em; color:var(--dim); margin-bottom:8px;
     display:flex; justify-content:space-between; }
@@ -118,6 +120,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   <div>
     <div class="panel"><h2>INCIDENT FEED <b id="incn"></b></h2><div class="feed" id="inc"></div></div>
     <div class="panel" style="margin-top:10px"><h2>ATTACKER FINDINGS <b id="fndn"></b></h2><div class="feed" id="fnd"></div></div>
+    <div class="panel" style="margin-top:10px"><h2>SERVICE ACCOUNTS / RBAC <b id="san"></b></h2><div class="feed" id="sa"></div></div>
   </div>
 </div>
 <div id="detail"></div>
@@ -140,10 +143,12 @@ $('stat').innerHTML = [
   `<div class="panel"><div class="v ${bad ? 'bad' : ''}">${v}</div><div class="k">${k}</div></div>`).join('');
 
 // ---- zones + nodes
-const zones = { dmz: 'DMZ / internet-facing', lan: 'LAN / internal', mgmt: 'MGMT / control' };
+const zones = { dmz: 'DMZ / internet-facing', k8s: 'K8S / CLUSTER', lan: 'LAN / internal', mgmt: 'MGMT / control' };
+const inZone = (a, z) => z === 'k8s' ? (a.kind === 'pod' || a.kind === 'node')
+  : a.net === z && a.kind !== 'pod' && a.kind !== 'node';
 let html = '';
 for (const [net, label] of Object.entries(zones)) {
-  const assets = D.assets.filter(a => a.net === net);
+  const assets = D.assets.filter(a => inZone(a, net));
   const servers = assets.filter(a => a.kind !== 'workstation');
   const wss = assets.filter(a => a.kind === 'workstation');
   html += `<div class="zone"><h3>${label}<span>${assets.length}</span></div>`;
@@ -169,6 +174,8 @@ function node(a) {
   if (crit) badges += '<span class="b crit">CRIT</span>';
   if (high && !crit) badges += '<span class="b high">HIGH</span>';
   if (a.leaked) badges += '<span class="b leak">LEAK</span>';
+  if (a.sas.length) badges += a.sas.some(x => x.overprivileged)
+    ? '<span class="b rbac">RBAC!</span>' : '<span class="b">SA</span>';
   if (a.cred_breach) badges += '<span class="b cred">CRACKED</span>';
   return `<div class="node${a.owned ? ' own' : ''}" onclick="show('${a.id}')">
     <div class="badges">${badges}</div>
@@ -182,6 +189,7 @@ function show(id) {
   const vulns = a.vulns.length ? a.vulns.map(v =>
     `${v.id} ${v.kind} (${v.severity})`).join('<br>') : 'none';
   const data = a.data.length ? a.data.join(', ') : 'none';
+  const sas = a.sas.length ? a.sas.map(x => x.name + (x.overprivileged ? ' (OVERPRIVILEGED: ' + x.permissions.join(', ') + ')' : '')).join(', ') : 'none';
   const breach = a.owned ? '<div class="row" style="color:var(--red)">COMPROMISED - attacker access confirmed</div>'
     : a.cred_breach ? '<div class="row" style="color:var(--red)">OWNER CREDENTIALS CRACKED</div>' : '';
   $('detail').innerHTML = `<span class="x" onclick="detail.style.display='none'">[x]</span>
@@ -189,6 +197,7 @@ function show(id) {
     <div class="row"><b>host</b> ${a.hostname} · ${a.os}</div>
     <div class="row"><b>net</b> ${a.net} · ${a.ip} · services: ${a.services.join(', ') || '-'}</div>
     <div class="row"><b>vulns</b><br>${vulns}</div>
+    <div class="row"><b>service accounts</b> ${sas}</div>
     <div class="row"><b>holds</b> ${held}</div>
     <div class="row"><b>data</b> ${data}</div>`;
   $('detail').style.display = 'block';
@@ -205,6 +214,17 @@ $('inc').innerHTML = D.incidents.map(i => `
   </div>`).join('') || '<div class="inc"><div class="meta">no incidents yet</div></div>';
 
 $('fndn').textContent = D.findings.length + ' live';
+
+// ---- RBAC panel
+const over = D.service_accounts.filter(s => s.overprivileged).length;
+$('san').textContent = over + ' overprivileged';
+$('sa').innerHTML = D.service_accounts.map(s => `
+  <div class="inc"><span class="card">${s.name}</span>
+    ${s.overprivileged ? '<span class="st open">OVERPRIVILEGED</span>' : '<span class="st res">ok</span>'}
+    <div class="meta">ns ${s.namespace} · token mounted: ${s.mounts.join(', ') || 'none'}</div>
+    <div class="meta">rbac: ${s.permissions.join(', ') || 'none'}</div>
+    ${s.escalates_to.length ? `<div class="meta" style="color:var(--amber)">escalates to: ${s.escalates_to.join(', ')}</div>` : ''}
+  </div>`).join('');
 $('fnd').innerHTML = D.findings.map(f => `
   <div class="fnd">+${f.points} · <span style="color:var(--amber)">${f.kind}</span> · ${f.label}
     <div class="meta">day ${f.day} · ${f.id}</div></div>`).join('')
@@ -217,6 +237,10 @@ def build_payload(world: World, state: dict) -> dict:
 
     # map findings onto assets: crown-jewel hits mark the asset OWNED,
     # cracked credentials mark the owner's workstation
+    sa_by_pod: dict[str, list] = {}
+    for sa in world.service_accounts:
+        for m in sa.mounts:
+            sa_by_pod.setdefault(m, []).append(sa)
     owned_assets = set()
     cracked_ws = set()
     for f in sc["attacker"]["findings"]:
@@ -239,6 +263,10 @@ def build_payload(world: World, state: dict) -> dict:
         "vulns": vuln_by_on.get(a.id, []), "holds": a.holds,
         "data": a.data, "crown_jewel": a.crown_jewel,
         "leaked": any(s.id in a.holds and s.exposure > 0 for s in world.secrets),
+        "sas": [{"name": sa.name, "namespace": sa.namespace,
+                 "overprivileged": sa.overprivileged,
+                 "permissions": sa.permissions}
+                for sa in sa_by_pod.get(a.id, [])],
         "owned": a.id in owned_assets,
         "cred_breach": a.id in cracked_ws,
     } for a in world.assets]
@@ -258,6 +286,12 @@ def build_payload(world: World, state: dict) -> dict:
             "total_vulns": len(world.vulns),
         },
         "assets": assets,
+        "service_accounts": [{
+            "id": sa.id, "name": sa.name, "namespace": sa.namespace,
+            "permissions": sa.permissions, "mounts": sa.mounts,
+            "overprivileged": sa.overprivileged,
+            "escalates_to": sa.escalates_to,
+        } for sa in world.service_accounts],
         "incidents": [{
             "card": i["card"], "day": i["day"], "severity": i["severity"],
             "targets": i["targets"], "resolved_day": i["resolved_day"],

@@ -63,6 +63,20 @@ def build_graph(world: World):
                 for u in s.unlocks:
                     link(a.id, u, f"loot: secret {s.id} on {a.id}")
 
+    # ingress routes (data-label convention "ingress:<asset-id>")
+    for a in world.assets:
+        for d in a.data:
+            if d.startswith("ingress:"):
+                link(a.id, d.split(":", 1)[1], "ingress route")
+
+    # service-account tokens: compromising a pod yields the mounted
+    # SA's RBAC power - escalate to whatever its permissions can reach
+    for sa in getattr(world, "service_accounts", []):
+        for pod in sa.mounts:
+            for tgt in sa.escalates_to:
+                link(pod, tgt, f"sa token {sa.id} ({sa.name}) - "
+                                f"rbac: {', '.join(sa.permissions) or 'none'}")
+
     # the internet can reach every DMZ host
     for a in world.assets:
         if a.net == "dmz":

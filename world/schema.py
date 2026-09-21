@@ -11,7 +11,7 @@ from typing import Literal, Optional
 
 import json
 
-Net = Literal["dmz", "lan", "mgmt"]
+Net = Literal["dmz", "lan", "mgmt", "k8s"]
 
 
 @dataclass
@@ -76,6 +76,17 @@ class Vuln:
 
 
 @dataclass
+class ServiceAccount:
+    id: str
+    name: str
+    namespace: str
+    permissions: list[str] = field(default_factory=list)   # rbac verbs
+    mounts: list[str] = field(default_factory=list)        # pod asset ids w/ token
+    overprivileged: bool = False
+    escalates_to: list[str] = field(default_factory=list)  # assets reachable via RBAC abuse
+
+
+@dataclass
 class World:
     org: dict
     employees: list[Employee]
@@ -83,6 +94,7 @@ class World:
     credentials: list[Credential]
     secrets: list[Secret]
     vulns: list[Vuln]
+    service_accounts: list[ServiceAccount]
     day: int = 0
 
     def to_dict(self) -> dict:
@@ -103,6 +115,7 @@ class World:
             credentials=[Credential(**c) for c in d["credentials"]],
             secrets=[Secret(**s) for s in d["secrets"]],
             vulns=[Vuln(**v) for v in d["vulns"]],
+            service_accounts=[ServiceAccount(**sa) for sa in d.get("service_accounts", [])],
             day=d.get("day", 0),
         )
 
@@ -114,4 +127,5 @@ class World:
             "credentials": {c.id: c for c in self.credentials},
             "secrets": {s.id: s for s in self.secrets},
             "vulns": {v.id: v for v in self.vulns},
+            "service_accounts": {sa.id: sa for sa in self.service_accounts},
         }

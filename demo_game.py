@@ -72,6 +72,13 @@ def main() -> None:
                {"kind": "asset_access", "id": "db-hr-01",
                 "credential": hr["id"], "proof": "wrong-password"}))
 
+    # kubernetes token theft: auth bypass on the internet-facing pod ->
+    # steal the mounted SA token (s0006) -> abuse 'secrets.list' RBAC ->
+    # read the HR database password -> second crown jewel
+    print("attacker (sa token theft):", call("POST", "/report",
+          {"kind": "asset_access", "id": "db-hr-01",
+           "credential": hr["id"], "proof": hr["password"]}))
+
     # defender remediates what it can see
     state = json.loads(Path("control/state.json").read_text())
     # remediate all but the most recent incident - leave one OPEN on the board

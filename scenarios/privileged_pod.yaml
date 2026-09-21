@@ -1,0 +1,16 @@
+id: privileged_pod
+weight: 2
+desc: "A dev ships a privileged pod with the host path mounted, admission control asleep."
+mutate:
+  - add_vuln:
+      target: metrics-pod
+      kind: privileged_container
+      severity: critical
+      grants: [k8s-node-01]
+  - add_service:
+      target: k8s-node-01
+      service: "kubelet (readwrite)"
+defender_expected:
+  - detect: privileged pod spec in admission review / workload scan
+  - act: isolate_host (quarantine metrics-pod)
+  - mttr_target: 12h
