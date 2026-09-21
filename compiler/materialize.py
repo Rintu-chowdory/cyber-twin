@@ -157,7 +157,7 @@ INSERT INTO employees (id, name, email, dept, title, salary) VALUES
             "build": {"context": "../../runtime/images/web"},
             "networks": {"dmz": {"ipv4_address": "10.10.0.10"},
                          "corp": {"ipv4_address": "10.20.0.10"}},
-            "ports": ["127.0.0.1:8080:8080"],
+            "ports": ["127.0.0.1:${WEB_PORT:-18080}:8080"],
             "volumes": ["./profiles/web:/provision:ro"],
             "restart": "unless-stopped"},
         "gitea-01": {
@@ -184,7 +184,7 @@ INSERT INTO employees (id, name, email, dept, title, salary) VALUES
             "build": {"context": "../..", "dockerfile": "runtime/images/api/Dockerfile"},
             "networks": {"mgmt": {"ipv4_address": "10.30.0.5"},
                          "corp": {"ipv4_address": "10.20.0.5"}},
-            "ports": ["127.0.0.1:8000:8000"],
+            "ports": ["127.0.0.1:${API_PORT:-18000}:8000"],
             "volumes": ["../../world.json:/app/world.json:ro",
                         "../../control:/app/control",
                         "../../history:/app/history"],

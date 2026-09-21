@@ -43,8 +43,9 @@ python -m compiler.materialize --world world.json --out runtime/generated
 docker compose -f runtime/generated/docker-compose.yml up -d --build
 
 # 4. the company is live:
-#    http://localhost:8080            - Nimbus Dynamics public site (real logins)
-#    http://localhost:8000/state      - defender API
+#    http://localhost:18080           - Nimbus Dynamics public site (real logins)
+#    http://localhost:18000/state      - defender API
+#    (ports overridable: WEB_PORT=... API_PORT=... docker compose up)
 ```
 
 ## What actually runs now
