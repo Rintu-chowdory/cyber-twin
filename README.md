@@ -27,6 +27,7 @@ The AI defender reasons over state + real service logs, not fiction.
 - [x] Phase 3 — Scenario tick (9 weighted cards + `--random` daily draw)
 - [x] Phase 4 — Defender control API (reads, actions, daily budget, collateral)
 - [x] Phase 5 — Kubernetes attack paths: SA tokens, overprivileged RBAC, ingress chains (world model + attack graph + dashboard; live cluster materialization still future)
+- [x] Phase 6 — Live-stack validator: real PASS/FAIL checks against running containers (web auth, SSRF, leaked secrets, attack-path reachability, ssh/db/git in --full mode)
 
 ## Quickstart
 
@@ -47,6 +48,42 @@ docker compose -f runtime/generated/docker-compose.yml up -d --build
 #    http://localhost:18000/state      - defender API
 #    (ports overridable: WEB_PORT=... API_PORT=... docker compose up)
 ```
+
+## Validating the lab (does it actually work?)
+
+Building the stack is only half the exercise - the other half is
+proving every claim on the dashboard is real. `tools/validate.py` is
+a live-stack validator: it checks running containers against the
+world model and reports PASS/FAIL, not "looks right."
+
+```bash
+# host mode: only what's published to your machine
+python -m tools.validate --world world.json \
+    --web-base http://localhost:18080 --api-base http://localhost:18000
+
+# full mode: run it INSIDE the corp network for ssh/db/git checks too
+docker compose -f runtime/generated/docker-compose.yml \
+    --profile validate run --rm validator
+```
+
+What it checks:
+- web tier: homepage up, bad creds rejected, a REAL world-model
+  password logs in and lands on `/intranet`, the SSRF at `/fetch`
+  actually reaches the corp network, the leaked `.env` really
+  contains the current db-prod-01 password
+- defender API: `/state` reachable
+- **attack-path cross-check**: every hop in `tools/attack_paths.py`'s
+  computed chains to the crown jewels is checked against the live
+  network - if the dashboard claims a path exists but the port isn't
+  actually open, this catches it
+- `--full` (needs to run on the corp network): sample SSH logins with
+  world-model creds across departments + jump-01, git-over-ssh auth
+  on gitea-01, and Postgres row counts on both databases matching the
+  seeded org/customer data
+
+Exit code is 0 only if every check passes - wire it into CI or run it
+after every `tick.py` day-advance to catch drift the dashboard alone
+would miss.
 
 ## What actually runs now
 

@@ -211,6 +211,12 @@ INSERT INTO employees (id, name, email, dept, title, salary) VALUES
         "networks": ["corp"], "command": "sleep infinity", "tty": True,
         "profiles": ["onnet"]}
 
+    services["validator"] = {
+        "build": {"context": "../..", "dockerfile": "runtime/images/validator/Dockerfile"},
+        "networks": ["corp"],
+        "volumes": ["../../world.json:/app/world.json:ro"],
+        "profiles": ["validate"]}
+
     compose = {
         "name": "cybertwin",
         "services": services,
